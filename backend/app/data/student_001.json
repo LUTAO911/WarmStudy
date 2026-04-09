@@ -1,0 +1,15 @@
+{
+  "user_id": "student_001",
+  "checkin": {
+    "emotion": "??",
+    "sleep": "??",
+    "study": "??",
+    "social": "??"
+  },
+  "test_status": {
+    "weekly": false,
+    "pressure": false,
+    "communication": false
+  },
+  "last_checkin": "2026-04-08T23:47:26.883876"
+}

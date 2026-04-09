@@ -1,0 +1,371 @@
+<view class="chat-container">
+  <view class="status-bar" style="height: {{statusBarHeight}}px;"></view>
+  
+  <view class="nav-header">
+    <view class="nav-left" bindtap="onShowSessionList">
+      <text class="nav-icon">☰</text>
+    </view>
+    <view class="nav-center">
+      <view class="agent-info" bindtap="onShowAgentSettings">
+        <image class="nav-avatar" src="{{agent.avatar}}" mode="aspectFill" />
+        <view class="agent-meta">
+          <text class="agent-name">{{agent.name}}</text>
+          <view class="emotion-badge">
+            <text class="emotion-icon">{{emotionDisplay.icon}}</text>
+            <text class="emotion-label">{{emotionDisplay.label}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="nav-right" bindtap="onNewSession">
+      <text class="nav-icon">+</text>
+    </view>
+  </view>
+
+  <scroll-view 
+    class="message-list" 
+    scroll-y 
+    scroll-top="{{scrollTop}}" 
+    scroll-with-animation
+    enhanced
+    show-scrollbar="{{false}}"
+  >
+    <block wx:for="{{messages}}" wx:key="id">
+      <view class="time-divider" wx:if="{{item.showTime}}">
+        <text class="time-text">{{item.time}}</text>
+      </view>
+      
+      <view 
+        class="message-wrapper {{item.role}}" 
+        data-id="{{item.id}}" 
+        data-role="{{item.role}}"
+        bindlongpress="onMessageLongPress"
+      >
+        <view class="message-content">
+          <image 
+            wx:if="{{item.role === 'ai'}}" 
+            class="msg-avatar" 
+            src="{{agent.avatar}}" 
+            mode="aspectFill" 
+          />
+          
+          <view class="bubble-wrapper">
+            <view class="bubble {{item.role}}-bubble">
+              <text class="bubble-text">{{item.content}}</text>
+            </view>
+            <view class="msg-meta" wx:if="{{item.role === 'ai' && item.emotion}}">
+              <text class="emotion-tag" style="background: {{emotionDisplay.color}}20; color: {{emotionDisplay.color}}">
+                {{emotionDisplay.icon}} {{emotionDisplay.label}}
+              </text>
+            </view>
+          </view>
+          
+          <image 
+            wx:if="{{item.role === 'user'}}" 
+            class="msg-avatar" 
+            src="/assets/avatar/user/default.png" 
+            mode="aspectFill" 
+          />
+        </view>
+      </view>
+    </block>
+
+    <view class="loading-message" wx:if="{{loading}}">
+      <image class="msg-avatar" src="{{agent.avatar}}" mode="aspectFill" />
+      <view class="bubble ai-bubble loading-bubble">
+        <view class="typing-indicator">
+          <view class="dot"></view>
+          <view class="dot"></view>
+          <view class="dot"></view>
+        </view>
+      </view>
+      <view class="stop-btn" bindtap="onStopStreaming">
+        <text class="stop-icon">■</text>
+        <text class="stop-text">停止</text>
+      </view>
+    </view>
+
+    <view class="scroll-placeholder" style="height: {{inputAreaHeight + 40}}rpx;"></view>
+  </scroll-view>
+
+  <view class="input-area" style="bottom: {{keyboardHeight}}px;">
+    <view wx:if="{{editingMessageId}}" class="edit-banner">
+      <text class="edit-hint">编辑消息中...</text>
+      <text class="edit-cancel" bindtap="cancelEdit">取消</text>
+    </view>
+    
+    <view class="input-row" wx:if="{{inputMode === 'text'}}">
+      <view class="input-btn" bindtap="onToggleInputMode">
+        <text class="btn-icon">🎤</text>
+      </view>
+      
+      <view class="input-wrapper">
+        <textarea 
+          class="chat-input"
+          value="{{inputText}}"
+          placeholder="输入您的问题..."
+          placeholder-class="input-placeholder"
+          maxlength="500"
+          auto-height
+          adjust-position="{{false}}"
+          bindinput="onTextInput"
+          bindfocus="onTextareaFocus"
+          bindconfirm="onSend"
+          confirm-type="send"
+          cursor-spacing="20"
+        />
+      </view>
+      
+      <view class="input-btn" bindtap="onShowToolbox">
+        <text class="btn-icon">+</text>
+      </view>
+      
+      <view class="send-btn {{inputText.length > 0 ? 'active' : ''}}" bindtap="onSend">
+        <text class="send-text">{{editingMessageId ? '更新' : '发送'}}</text>
+      </view>
+    </view>
+
+    <view class="input-row voice-row" wx:if="{{inputMode === 'voice'}}">
+      <view class="input-btn" bindtap="onToggleInputMode">
+        <text class="btn-icon">⌨️</text>
+      </view>
+      
+      <view 
+        class="voice-input-btn {{voiceState === 'recording' || voiceState === 'transcribing' ? 'recording' : ''}}"
+        catchtouchstart="onVoiceStart"
+        catchtouchend="onVoiceEnd"
+      >
+        <text class="voice-btn-text">
+          {{voiceState === 'recording' ? '松开发送' : voiceState === 'transcribing' ? '转写中...' : '按住说话'}}
+        </text>
+      </view>
+    </view>
+  </view>
+
+  <view class="context-menu {{showContextMenu ? 'show' : ''}}" 
+        style="left: {{contextMenuPos.x}}px; top: {{contextMenuPos.y}}px;"
+        wx:if="{{showContextMenu}}">
+    <view class="menu-mask" bindtap="closeContextMenu"></view>
+    <view class="menu-content">
+      <view class="menu-item" bindtap="onCopyMessage">
+        <text class="menu-icon">📋</text>
+        <text class="menu-label">复制</text>
+      </view>
+      <view class="menu-item" bindtap="onEditMessage" wx:if="{{messages[contextMenuFor].role === 'user'}}">
+        <text class="menu-icon">✏️</text>
+        <text class="menu-label">编辑</text>
+      </view>
+      <view class="menu-item" bindtap="onWithdrawMessage" wx:if="{{messages[contextMenuFor].role === 'user'}}">
+        <text class="menu-icon">↩️</text>
+        <text class="menu-label">撤回</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-overlay {{showToolbox ? 'show' : ''}}" wx:if="{{showToolbox}}">
+    <view class="modal-mask" bindtap="onCloseToolbox"></view>
+    <view class="toolbox-panel">
+      <view class="toolbox-header">
+        <text class="toolbox-title">更多功能</text>
+        <text class="toolbox-close" bindtap="onCloseToolbox">×</text>
+      </view>
+      <view class="quick-questions">
+        <text class="quick-title">快捷问题</text>
+        <view class="question-list">
+          <view class="question-item" bindtap="onQuickQuestion" data-question="孩子学习压力大怎么办？">
+            <text>孩子学习压力大怎么办？</text>
+          </view>
+          <view class="question-item" bindtap="onQuickQuestion" data-question="如何和孩子有效沟通？">
+            <text>如何和孩子有效沟通？</text>
+          </view>
+          <view class="question-item" bindtap="onQuickQuestion" data-question="孩子沉迷手机怎么办？">
+            <text>孩子沉迷手机怎么办？</text>
+          </view>
+          <view class="question-item" bindtap="onQuickQuestion" data-question="如何培养孩子的好习惯？">
+            <text>如何培养孩子的好习惯？</text>
+          </view>
+        </view>
+      </view>
+      <view class="toolbox-grid">
+        <view class="tool-item" bindtap="onShowContext">
+          <view class="tool-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <text class="tool-emoji">📜</text>
+          </view>
+          <text class="tool-name">查看上下文</text>
+        </view>
+        <view class="tool-item" bindtap="onShowAgentSettings">
+          <view class="tool-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <text class="tool-emoji">⚙️</text>
+          </view>
+          <text class="tool-name">智能体设置</text>
+        </view>
+        <view class="tool-item" bindtap="onNewSession">
+          <view class="tool-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <text class="tool-emoji">💬</text>
+          </view>
+          <text class="tool-name">新会话</text>
+        </view>
+        <view class="tool-item" bindtap="onClearHistory">
+          <view class="tool-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <text class="tool-emoji">🗑️</text>
+          </view>
+          <text class="tool-name">清空历史</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-overlay {{showSessionList ? 'show' : ''}}" wx:if="{{showSessionList}}">
+    <view class="modal-mask" bindtap="onCloseSessionList"></view>
+    <view class="session-panel">
+      <view class="session-header">
+        <text class="session-title">历史会话</text>
+        <view class="session-new-btn" bindtap="onNewSession">
+          <text class="new-icon">+</text>
+          <text class="new-text">新会话</text>
+        </view>
+      </view>
+      <scroll-view class="session-list" scroll-y>
+        <view 
+          class="session-item {{item.id === currentSessionId ? 'active' : ''}}" 
+          wx:for="{{sessions}}" 
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="onSelectSession"
+        >
+          <view class="session-info">
+            <text class="session-name">{{item.title}}</text>
+            <text class="session-preview">{{item.lastMessage}}</text>
+          </view>
+          <view class="session-meta">
+            <text class="session-time">{{item.time}}</text>
+            <view class="session-delete" catchtap="onDeleteSession" data-id="{{item.id}}">
+              <text class="delete-icon">×</text>
+            </view>
+          </view>
+        </view>
+        <view class="empty-session" wx:if="{{sessions.length === 0}}">
+          <text class="empty-icon">📭</text>
+          <text class="empty-text">暂无历史会话</text>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view class="modal-overlay {{showAgentSettings ? 'show' : ''}}" wx:if="{{showAgentSettings}}">
+    <view class="modal-mask" bindtap="onCloseAgentSettings"></view>
+    <view class="settings-panel">
+      <view class="settings-header">
+        <text class="settings-title">智能体设置</text>
+        <text class="settings-close" bindtap="onCloseAgentSettings">×</text>
+      </view>
+      
+      <view class="settings-section">
+        <view class="section-title">
+          <text class="title-icon">🎭</text>
+          <text class="title-text">AI形象</text>
+        </view>
+        <view class="avatar-picker" bindtap="onShowAvatarPicker">
+          <image class="current-avatar" src="{{agent.avatar}}" mode="aspectFill" />
+          <view class="avatar-info">
+            <text class="avatar-name">{{agent.name}}</text>
+            <text class="avatar-desc">{{agent.personality}}</text>
+          </view>
+          <text class="picker-arrow">›</text>
+        </view>
+      </view>
+      
+      <view class="settings-section">
+        <view class="section-title">
+          <text class="title-icon">💕</text>
+          <text class="title-text">情感浓度</text>
+        </view>
+        <view class="emotion-slider">
+          <slider 
+            class="slider"
+            min="0" 
+            max="4" 
+            value="{{agent.emotionLevel - 1}}"
+            block-size="24"
+            activeColor="{{emotionDisplay.color}}"
+            backgroundColor="#f0f0f0"
+            bindchange="onEmotionChange"
+          />
+          <view class="emotion-labels">
+            <text class="label-item">平静</text>
+            <text class="label-item">热情</text>
+          </view>
+          <view class="current-emotion">
+            <text class="emotion-display" style="color: {{emotionDisplay.color}}">
+              {{emotionDisplay.icon}} {{emotionDisplay.label}}
+            </text>
+          </view>
+        </view>
+      </view>
+      
+      <view class="settings-section">
+        <view class="section-title">
+          <text class="title-icon">ℹ️</text>
+          <text class="title-text">关于</text>
+        </view>
+        <view class="about-item" bindtap="onAboutAgent">
+          <text class="about-text">关于AI助手</text>
+          <text class="about-arrow">›</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-overlay {{showAvatarPicker ? 'show' : ''}}" wx:if="{{showAvatarPicker}}">
+    <view class="modal-mask" bindtap="onCloseAvatarPicker"></view>
+    <view class="avatar-panel">
+      <view class="avatar-header">
+        <text class="avatar-title">选择AI形象</text>
+        <text class="avatar-close" bindtap="onCloseAvatarPicker">×</text>
+      </view>
+      <view class="avatar-list">
+        <view 
+          class="avatar-option" 
+          wx:for="{{['default', 'wise', 'friendly']}}" 
+          wx:key="*this"
+          wx:for-item="avatarId"
+          data-id="{{avatarId}}"
+          bindtap="onSelectAvatar"
+        >
+          <image class="option-avatar" src="/assets/avatar/pet/avatar.png" mode="aspectFill" />
+          <view class="option-info">
+            <text class="option-name">{{avatarId === 'default' ? '暖暖' : avatarId === 'wise' ? '智慧导师' : '知心姐姐'}}</text>
+            <text class="option-desc">{{avatarId === 'default' ? '温暖贴心' : avatarId === 'wise' ? '睿智沉稳' : '亲切友善'}}</text>
+          </view>
+          <view class="option-check" wx:if="{{(avatarId === 'default' && agent.name === '暖暖') || (avatarId === 'wise' && agent.name === '智慧导师') || (avatarId === 'friendly' && agent.name === '知心姐姐')}}">
+            <text class="check-icon">✓</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-overlay {{showContextPanel ? 'show' : ''}}" wx:if="{{showContextPanel}}">
+    <view class="modal-mask" bindtap="onCloseContext"></view>
+    <view class="context-panel">
+      <view class="context-header">
+        <text class="context-title">对话上下文</text>
+        <text class="context-close" bindtap="onCloseContext">×</text>
+      </view>
+      <scroll-view class="context-scroll" scroll-y>
+        <view class="context-summary">
+          <text class="summary-label">当前会话包含</text>
+          <text class="summary-count">{{messages.length}} 条消息</text>
+        </view>
+        <view class="context-list">
+          <view class="context-item" wx:for="{{messages}}" wx:key="id">
+            <view class="context-role {{item.role}}">
+              <text class="role-text">{{item.role === 'ai' ? agent.name : '我'}}</text>
+            </view>
+            <text class="context-content">{{item.content}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

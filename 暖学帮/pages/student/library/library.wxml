@@ -1,0 +1,153 @@
+<view class="page">
+  <!-- ===== 头部：登录信息 + 绑定家长 ===== -->
+  <view class="user-header">
+    <view class="user-info-row">
+      <image class="user-avatar" src="/images/user-avatar.png" mode="aspectFill"/>
+      <view class="user-detail">
+        <text class="user-name">{{userInfo.name}}</text>
+        <text class="user-class">{{userInfo.grade}}{{userInfo.class}} · {{userInfo.studentId}}</text>
+      </view>
+      <view class="bind-parent-btn {{userInfo.parentBound ? 'bound' : ''}}" bindtap="onBindParent">
+        <text>{{userInfo.parentBound ? '✓ 已绑定家长' : '📷 扫码绑定'}}</text>
+      </view>
+    </view>
+    <!-- 心理状态指示条 -->
+    <view class="psych-bar">
+      <text class="psych-label">今日心理状态</text>
+      <view class="psych-track">
+        <view class="psych-fill" style="width: {{userInfo.todayMood * 10}}%"></view>
+      </view>
+      <text class="psych-score">{{userInfo.todayMood * 10}}分</text>
+    </view>
+  </view>
+
+  <!-- ===== 今日待办 ===== -->
+  <view class="section section-todo">
+    <view class="section-header">
+      <text class="section-title">✨ 今日待办</text>
+      <text class="add-btn" bindtap="onAddTodo">+ 添加任务</text>
+    </view>
+    <view class="todo-list">
+      <view class="todo-item {{item.done ? 'done' : ''}}" wx:for="{{todoList}}" wx:key="id">
+        <view class="todo-check" bindtap="onToggleTodo" data-id="{{item.id}}">
+          <text class="check-icon {{item.done ? 'green' : 'red'}}">{{item.done ? '✓' : '○'}}</text>
+        </view>
+        <text class="todo-text">{{item.text}}</text>
+        <text class="todo-source {{item.source}}">{{sourceMap[item.source] || item.source}}</text>
+        <text class="todo-del" bindtap="onDelTodo" data-id="{{item.id}}">×</text>
+      </view>
+      <view class="empty-tip" wx:if="{{todoList.length === 0}}">暂无待办，添加一个吧</view>
+    </view>
+  </view>
+
+  <!-- ===== 功能入口 ===== -->
+  <view class="feature-grid">
+    <!-- 左列 -->
+    <view class="feature-card" bindtap="onFeatureTap" data-type="wrongbook">
+      <view class="feature-icon" style="background:#ffebee">
+        <text style="color:#f44336;font-size:40rpx">📝</text>
+      </view>
+      <text class="feature-title">错题本</text>
+      <text class="feature-desc">已收录 {{wrongBookCount}} 道错题</text>
+    </view>
+
+    <view class="feature-card" bindtap="onFeatureTap" data-type="grade">
+      <view class="feature-icon" style="background:#fff3e0">
+        <text style="color:#ff9500;font-size:40rpx">🔒</text>
+      </view>
+      <text class="feature-title">智学网查成绩</text>
+      <text class="feature-desc">对接后一键同步</text>
+      <view class="feature-badge">预约</view>
+    </view>
+
+    <!-- 右列 -->
+    <view class="feature-card" bindtap="onFeatureTap" data-type="aitest">
+      <view class="feature-icon" style="background:#e3f2fd">
+        <text style="color:#2196f3;font-size:40rpx">✏️</text>
+      </view>
+      <text class="feature-title">AI出题测试</text>
+      <text class="feature-desc">根据教材智能出题</text>
+    </view>
+
+    <view class="feature-card" bindtap="onFeatureTap" data-type="analysis">
+      <view class="feature-icon" style="background:#f3e5f5">
+        <text style="color:#9c27b0;font-size:40rpx">📊</text>
+      </view>
+      <text class="feature-title">成绩分析</text>
+      <text class="feature-desc">薄弱点诊断</text>
+    </view>
+  </view>
+
+  <!-- ===== 教材管理折叠区 ===== -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">📚 教材管理</text>
+      <text class="add-btn" bindtap="onManageBooks">{{manageMode ? '完成' : '管理'}}</text>
+    </view>
+
+    <!-- 管理模式：分组展示 -->
+    <view wx:if="{{manageMode}}">
+      <view class="group-item" wx:for="{{bookGroups}}" wx:key="subject">
+        <view class="group-header" bindtap="onToggleGroup" data-sub="{{item.subject}}">
+          <text class="group-name">{{item.subject}}</text>
+          <text class="group-count">{{item.books.length}}本</text>
+        </view>
+        <view class="group-books" wx:if="{{item.open}}">
+          <view class="book-row" wx:for="{{item.books}}" wx:key="id">
+            <text class="book-name">{{item.grade}}·{{item.pub}}</text>
+            <text class="book-del-btn" bindtap="onDelMyBook" data-id="{{item.id}}">删除</text>
+          </view>
+        </view>
+      </view>
+      <view class="empty-tip" wx:if="{{bookGroups.length === 0}}">还没有添加教材</view>
+    </view>
+
+    <!-- 正常模式：筛选 + 添加 -->
+    <view wx:else>
+      <view class="filter-row">
+        <picker class="filter-pick" mode="selector" range="{{subjectList}}" value="{{selSubject}}" bindchange="onSubjectChange">
+          {{subjectList[selSubject]}}
+        </picker>
+        <picker class="filter-pick" mode="selector" range="{{gradeList}}" value="{{selGrade}}" bindchange="onGradeChange">
+          {{gradeList[selGrade]}}
+        </picker>
+        <picker class="filter-pick" mode="selector" range="{{pubList}}" value="{{selPub}}" bindchange="onPubChange">
+          {{pubList[selPub]}}
+        </picker>
+        <view class="confirm-btn" bindtap="onConfirmFilter">
+          <text>搜索</text>
+        </view>
+      </view>
+
+      <!-- 搜索结果 -->
+      <view class="book-result" wx:if="{{showResult}}">
+        <view class="result-tip">找到 {{filterResult.length}} 本教材</view>
+        <view class="book-row" wx:for="{{filterResult}}" wx:key="id">
+          <view class="book-info">
+            <text class="book-sub">{{item.subject}}</text>
+            <text class="book-grade">{{item.grade}}·{{item.pub}}</text>
+          </view>
+          <text class="book-add-btn {{item.added ? 'added' : ''}}" bindtap="onAddMyBook" data-id="{{item.id}}">
+            {{item.added ? '✓已添加' : '+ 添加'}}
+          </text>
+        </view>
+        <view class="empty-tip" wx:if="{{filterResult.length === 0}}">该条件下暂无教材</view>
+      </view>
+
+      <!-- 已添加列表 -->
+      <view class="my-books-list" wx:if="{{!showResult && myBooks.length > 0}}">
+        <view class="book-row" wx:for="{{myBooks}}" wx:key="id">
+          <view class="book-info">
+            <text class="book-sub">{{item.subject}}</text>
+            <text class="book-grade">{{item.grade}}·{{item.pub}}</text>
+          </view>
+          <text class="grade-query-btn" bindtap="onQueryGrade" data-book="{{item}}">查成绩</text>
+        </view>
+      </view>
+      <view class="empty-tip" wx:if="{{!showResult && myBooks.length === 0}}">还没有添加教材，去搜索添加吧</view>
+    </view>
+  </view>
+
+  <view style="height:40rpx"></view>
+  <tab-bar />
+</view>

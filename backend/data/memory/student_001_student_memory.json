@@ -1,0 +1,22 @@
+{
+  "user_id": "student_001",
+  "role": "student",
+  "short_term": [
+    {
+      "role": "user",
+      "content": "??",
+      "timestamp": "2026-04-08T23:50:42.095484",
+      "intent": "casual_chat",
+      "state": "response_generating"
+    },
+    {
+      "role": "assistant",
+      "content": "你好呀，我是暖暖~看到你发来\"??\",是不是有什么心事想和我聊聊呢？或者有什么困惑想要倾诉吗？我在这里陪着你，随时都可以和我说说你的想法哦。",
+      "timestamp": "2026-04-08T23:50:42.096226",
+      "intent": "casual_chat",
+      "state": "RESPONSE_READY"
+    }
+  ],
+  "long_term_summary": null,
+  "updated_at": "2026-04-08T23:50:42.096254"
+}
