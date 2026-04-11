@@ -5,9 +5,6 @@ __pycache__/
 dist/
 build/
 
-# Virtual environments
-agent/.venv/
-venv/
 
 # IDE
 .vscode/
@@ -21,8 +18,3 @@ Thumbs.db
 *.log
 logs/
 
-# Uploads and data (keep structure, ignore content)
-agent/uploads/*
-agent/data/*
-!agent/uploads/.gitkeep
-!agent/data/.gitkeep
