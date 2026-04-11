@@ -32,12 +32,5 @@
       "skill_calls": 0,
       "react_steps": 0
     }
-  },
-  {
-    "id": "c7389c453cd5",
-    "role": "assistant",
-    "content": "Second",
-    "timestamp": 1775926238.1227653,
-    "metadata": {}
   }
 ]
