@@ -1,0 +1,80 @@
+<view class="login-page">
+  <!-- Logo区域 -->
+  <view class="logo-section">
+    <view class="logo-circle">
+      <text class="logo-icon">🌟</text>
+    </view>
+    <text class="app-name">WarmStudy</text>
+    <text class="app-slogan">温暖陪伴，智慧成长</text>
+  </view>
+
+  <!-- 身份选择 -->
+  <view class="role-section" wx:if="{{!selectedRole}}">
+    <text class="section-title">选择您的身份</text>
+    <view class="role-cards">
+      <view class="role-card student" bindtap="onSelectRole" data-role="student">
+        <view class="role-icon-wrap" style="background: #e8f5e9;">
+          <text class="role-icon">🎓</text>
+        </view>
+        <text class="role-name">我是学生</text>
+        <text class="role-desc">心理测评 · AI对话 · 知识库</text>
+        <view class="role-arrow" style="color: #00C853;">›</view>
+      </view>
+      <view class="role-card parent" bindtap="onSelectRole" data-role="parent">
+        <view class="role-icon-wrap" style="background: #fff3e0;">
+          <text class="role-icon">👨‍👩‍👧</text>
+        </view>
+        <text class="role-name">我是家长</text>
+        <text class="role-desc">查看报告 · AI助手 · 成长追踪</text>
+        <view class="role-arrow" style="color: #FF9500;">›</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 登录方式选择 -->
+  <view class="login-section" wx:if="{{selectedRole}}">
+    <view class="role-header">
+      <text class="role-title">{{selectedRole === 'student' ? '学生登录' : '家长登录'}}</text>
+      <text class="switch-role" bindtap="onSwitchRole">切换身份</text>
+    </view>
+
+    <!-- 微信登录 -->
+    <button class="login-btn wechat" bindtap="onWechatLogin">
+      <text class="btn-icon">💬</text>
+      <text class="btn-text">微信一键登录</text>
+    </button>
+
+    <!-- 分割线 -->
+    <view class="divider">
+      <view class="divider-line"></view>
+      <text class="divider-text">或</text>
+      <view class="divider-line"></view>
+    </view>
+
+    <!-- 手机号登录 -->
+    <view class="phone-section">
+      <view class="phone-input-wrap">
+        <text class="phone-prefix">+86</text>
+        <input class="phone-input" type="number" maxlength="11" placeholder="请输入手机号" value="{{phone}}" bindinput="onPhoneInput"/>
+      </view>
+      <view class="code-input-wrap">
+        <input class="code-input" type="number" maxlength="6" placeholder="请输入验证码" value="{{code}}" bindinput="onCodeInput"/>
+        <button class="code-btn {{countdown > 0 ? 'disabled' : ''}}" bindtap="onSendCode" disabled="{{countdown > 0}}">
+          {{countdown > 0 ? countdown + 's' : '获取验证码'}}
+        </button>
+      </view>
+      <button class="login-btn phone {{selectedRole === 'student' ? 'student-theme' : 'parent-theme'}}" bindtap="onPhoneLogin">
+        <text class="btn-text">手机号登录</text>
+      </button>
+    </view>
+
+    <!-- 用户协议 -->
+    <view class="agreement">
+      <checkbox class="agree-checkbox" checked="{{agreed}}" bindtap="onToggleAgree"/>
+      <text class="agree-text">我已阅读并同意</text>
+      <text class="agree-link" bindtap="onViewAgreement">《用户协议》</text>
+      <text class="agree-text">和</text>
+      <text class="agree-link" bindtap="onViewPrivacy">《隐私政策》</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,21 @@
+/* 家长端设置页 */
+.page { min-height: 100vh; background: #F5F5F5; padding: 24rpx; }
+.account-card { background: #fff; border-radius: 20rpx; padding: 28rpx; display: flex; align-items: center; margin-bottom: 28rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
+.account-avatar { width: 80rpx; height: 80rpx; border-radius: 50%; background: linear-gradient(135deg,#FF9500,#FF6B00); display: flex; align-items: center; justify-content: center; margin-right: 20rpx; flex-shrink: 0; }
+.avatar-text { font-size: 36rpx; font-weight: 700; color: white; }
+.account-info { flex: 1; }
+.account-name { display: block; font-size: 32rpx; font-weight: 600; color: #333; }
+.account-phone { display: block; font-size: 26rpx; color: #999; margin-top: 4rpx; }
+.account-edit { font-size: 28rpx; color: #FF9500; font-weight: 500; }
+.section-title { font-size: 28rpx; font-weight: 600; color: #333; margin-bottom: 16rpx; margin-top: 8rpx; }
+.menu-card { background: #fff; border-radius: 20rpx; margin-bottom: 20rpx; overflow: hidden; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }
+.menu-item { display: flex; align-items: center; gap: 16rpx; padding: 28rpx 24rpx; border-bottom: 1rpx solid #F5F5F5; }
+.menu-item:last-child { border-bottom: none; }
+.menu-icon { font-size: 36rpx; flex-shrink: 0; }
+.menu-text { flex: 1; font-size: 30rpx; color: #333; }
+.menu-status { font-size: 24rpx; padding: 4rpx 12rpx; border-radius: 10rpx; margin-right: 12rpx; }
+.success { background: #E8F5E9; color: #00C853; }
+.warn { background: #FFF3E0; color: #FF9500; }
+.menu-value { font-size: 26rpx; color: #999; margin-right: 12rpx; }
+.menu-arrow { font-size: 36rpx; color: #ccc; }
+.logout-btn { text-align: center; font-size: 30rpx; color: #FF3B30; padding: 28rpx; background: #fff; border-radius: 20rpx; margin-top: 20rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04); }

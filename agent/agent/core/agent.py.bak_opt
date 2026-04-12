@@ -1,0 +1,534 @@
+"""
+Agent Core - 智能体核心编排引擎
+版本: 2.0
+优化: 混合搜索支持、异步增强、更好的上下文管理
+"""
+import time
+import uuid
+import threading
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union
+from enum import Enum
+
+from agent.memory import MemoryManager
+from agent.tool_registry import ToolRegistry, ToolResult, setup_builtin_tools
+from agent.context import ContextManager
+from agent.skills import SkillRegistry, SkillResult, setup_builtin_skills
+from agent.prompts import PromptManager, DynamicPromptBuilder
+
+
+class AgentMode(Enum):
+    CHAT = "chat"
+    RAG = "rag"
+    AGENT = "agent"
+    TOOL_CALLER = "tool_caller"
+
+
+@dataclass(frozen=True)
+class AgentConfig:
+    name: str = "暖学帮智能助手"
+    model: str = "qwen-max"
+    temperature: float = 0.7
+    max_tokens: int = 1500
+    top_p: float = 0.8
+    enable_rag: bool = True
+    enable_tools: bool = True
+    enable_skills: bool = True
+    max_tool_calls: int = 3
+    max_react_steps: int = 5
+    system_prompt: str = ""
+    hybrid_search_default: bool = True
+    rerank_default: bool = True
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "model": self.model,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "top_p": self.top_p,
+            "enable_rag": self.enable_rag,
+            "enable_tools": self.enable_tools,
+            "enable_skills": self.enable_skills,
+            "max_tool_calls": self.max_tool_calls,
+            "max_react_steps": self.max_react_steps,
+            "hybrid_search_default": self.hybrid_search_default,
+            "rerank_default": self.rerank_default
+        }
+
+
+@dataclass(frozen=True)
+class AgentResponse:
+    answer: str
+    sources: tuple
+    tool_results: tuple
+    skill_results: tuple
+    context_used: bool
+    metadata: tuple
+    execution_time: float
+
+    def __post_init__(self) -> None:
+        if isinstance(self.sources, list):
+            object.__setattr__(self, 'sources', tuple(self.sources))
+        if isinstance(self.tool_results, list):
+            object.__setattr__(self, 'tool_results', tuple(self.tool_results))
+        if isinstance(self.skill_results, list):
+            object.__setattr__(self, 'skill_results', tuple(self.skill_results))
+        if isinstance(self.metadata, dict):
+            object.__setattr__(self, 'metadata', tuple(self.metadata.items()))
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "answer": self.answer,
+            "sources": list(self.sources),
+            "tool_results": list(self.tool_results),
+            "skill_results": list(self.skill_results),
+            "context_used": self.context_used,
+            "metadata": dict(self.metadata),
+            "execution_time": round(self.execution_time, 3)
+        }
+
+
+class Agent:
+    def __init__(
+        self,
+        config: Optional[AgentConfig] = None,
+        memory_manager: Optional[MemoryManager] = None,
+        tool_registry: Optional[ToolRegistry] = None,
+        context_manager: Optional[ContextManager] = None,
+        skill_registry: Optional[SkillRegistry] = None,
+        prompt_manager: Optional[PromptManager] = None
+    ) -> None:
+        self.config: AgentConfig = config or AgentConfig()
+        self.memory: MemoryManager = memory_manager or MemoryManager()
+        self.tools: ToolRegistry = tool_registry or ToolRegistry()
+        self.context: ContextManager = context_manager or ContextManager()
+        self.skills: SkillRegistry = skill_registry or SkillRegistry()
+        self.prompts: PromptManager = prompt_manager or PromptManager()
+        self.prompt_builder: DynamicPromptBuilder = DynamicPromptBuilder(self.prompts)
+        self._lock: threading.RLock = threading.RLock()
+        self._setup_components()
+
+    def _setup_components(self) -> None:
+        if len(self.tools.get_all()) == 0:
+            setup_builtin_tools()
+
+        if len(self.skills.get_all()) == 0:
+            setup_builtin_skills()
+
+    def chat(
+        self,
+        message: str,
+        session_id: Optional[str] = None,
+        use_rag: Optional[bool] = None,
+        use_tools: Optional[bool] = None,
+        use_skills: Optional[bool] = None,
+        use_hybrid: Optional[bool] = None,
+        use_rerank: Optional[bool] = None
+    ) -> AgentResponse:
+        start_time: float = time.time()
+        sid: str = session_id or "default"
+
+        use_rag = use_rag if use_rag is not None else self.config.enable_rag
+        use_tools = use_tools if use_tools is not None else self.config.enable_tools
+        use_skills = use_skills if use_skills is not None else self.config.enable_skills
+        use_hybrid = use_hybrid if use_hybrid is not None else self.config.hybrid_search_default
+        use_rerank = use_rerank if use_rerank is not None else self.config.rerank_default
+
+        self.memory.add_user_message(message, {"session_id": sid})
+
+        context_results: List[Dict[str, Any]] = []
+        if use_rag:
+            if use_hybrid:
+                context_results = self._retrieve_context_hybrid(message, n_results=5, rerank=use_rerank)
+            else:
+                context_results = self._retrieve_context(message)
+
+            if context_results:
+                self.context.add_knowledge_context(sid, context_results, message)
+
+        tool_results: List[ToolResult] = []
+        skill_results: List[SkillResult] = []
+
+        if use_tools and self._should_use_tools(message):
+            tool_results = self._execute_tools(message)
+            for tr in tool_results:
+                self.context.add_entry(
+                    content_type="tool",
+                    content=tr.formatted_result,
+                    relevance_score=0.9,
+                    source=tr.tool_name
+                )
+
+        if use_skills and self._should_use_skill(message):
+            skill_results = self._execute_skills(message)
+            for sr in skill_results:
+                self.context.add_skill_context(sid, sr.skill_name, str(sr.output))
+
+        prompt: str = self._build_prompt(
+            message=message,
+            session_id=sid,
+            context_results=context_results,
+            tool_results=tool_results,
+            skill_results=skill_results
+        )
+
+        answer: str = self._generate_response(prompt)
+
+        self.memory.add_assistant_message(answer, {
+            "session_id": sid,
+            "tool_calls": len(tool_results),
+            "skill_calls": len(skill_results)
+        })
+
+        sources: List[Dict[str, Any]] = []
+        if context_results:
+            for doc in context_results[:3]:
+                sources.append({
+                    "content": doc.get("content", "")[:150] + "...",
+                    "source": doc.get("source", ""),
+                    "page": doc.get("page", ""),
+                    "similarity": doc.get("similarity", 0),
+                    "combined_score": doc.get("combined_score", doc.get("similarity", 0))
+                })
+
+        return AgentResponse(
+            answer=answer,
+            sources=tuple(sources),
+            tool_results=tuple(tr.to_dict() for tr in tool_results),
+            skill_results=tuple(sr.to_dict() for sr in skill_results),
+            context_used=len(context_results) > 0,
+            metadata=tuple({
+                "session_id": sid,
+                "mode": "chat",
+                "search_mode": "hybrid" if use_hybrid else "vector",
+                "config": self.config.to_dict()
+            }.items()),
+            execution_time=time.time() - start_time
+        )
+
+    def rag_chat(
+        self,
+        message: str,
+        session_id: Optional[str] = None,
+        n_results: int = 5,
+        use_hybrid: bool = True,
+        use_rerank: bool = True
+    ) -> AgentResponse:
+        return self.chat(
+            message=message,
+            session_id=session_id,
+            use_rag=True,
+            use_tools=False,
+            use_skills=False,
+            use_hybrid=use_hybrid,
+            use_rerank=use_rerank
+        )
+
+    def agent_chat(
+        self,
+        message: str,
+        session_id: Optional[str] = None
+    ) -> AgentResponse:
+        return self.chat(
+            message=message,
+            session_id=session_id,
+            use_rag=True,
+            use_tools=True,
+            use_skills=True
+        )
+
+    def _retrieve_context(self, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
+        try:
+            from vectorstore import query_chroma
+            results = query_chroma(
+                query_text=query,
+                n_results=n_results,
+                persist_dir="data/chroma",
+                collection_name="knowledge_base"
+            )
+
+            context: List[Dict[str, Any]] = []
+            for doc, meta, dist in results:
+                context.append({
+                    "content": doc,
+                    "source": str(meta.get("source", "")),
+                    "page": meta.get("page", ""),
+                    "similarity": round(1 - dist, 4)
+                })
+            return context
+        except Exception:
+            return []
+
+    def _retrieve_context_hybrid(
+        self,
+        query: str,
+        n_results: int = 5,
+        rerank: bool = True
+    ) -> List[Dict[str, Any]]:
+        try:
+            from vectorstore import query_with_hybrid_search
+            results = query_with_hybrid_search(
+                query_text=query,
+                n_results=n_results,
+                rerank=rerank
+            )
+            return results
+        except Exception:
+            return self._retrieve_context(query, n_results)
+
+    def _should_use_tools(self, message: str) -> bool:
+        tool_keywords: List[str] = [
+            "search", "find", "查询", "搜索", "计算", "calculate", "时间", "time", "当前"
+        ]
+        message_lower: str = message.lower()
+        return any(keyword in message_lower for keyword in tool_keywords)
+
+    def _should_use_skill(self, message: str) -> bool:
+        skill_keywords: List[str] = [
+            "summarize", "summary", "总结", "提取", "extract", "format", "格式"
+        ]
+        message_lower: str = message.lower()
+        return any(keyword in message_lower for keyword in skill_keywords)
+
+    def _execute_tools(self, message: str) -> List[ToolResult]:
+        results: List[ToolResult] = []
+
+        if any(kw in message.lower() for kw in ["search", "查询", "搜索"]):
+            if "knowledge" in message.lower() or "知识库" in message:
+                tool_result: ToolResult = self.tools.execute(
+                    "search_knowledge_base",
+                    query=message,
+                    n_results=5
+                )
+                results.append(tool_result)
+
+        if any(kw in message.lower() for kw in ["time", "时间", "现在"]):
+            tool_result = self.tools.execute("get_current_time")
+            results.append(tool_result)
+
+        if any(kw in message.lower() for kw in ["计算", "calculate", "等于"]):
+            import re
+            expr_match = re.search(r'[\d\+\-\*/\.\(\)\s]+', message)
+            if expr_match:
+                expression: str = expr_match.group().strip()
+                tool_result = self.tools.execute("calculate", expression=expression)
+                results.append(tool_result)
+
+        return results
+
+    def _execute_skills(self, message: str) -> List[SkillResult]:
+        results: List[SkillResult] = []
+
+        if any(kw in message.lower() for kw in ["summarize", "总结", "摘要"]):
+            skill_result: SkillResult = self.skills.execute(
+                "summarize", {"text": message, "max_length": 200}
+            )
+            results.append(skill_result)
+
+        if any(kw in message.lower() for kw in ["extract", "提取", "关键词"]):
+            skill_result = self.skills.execute(
+                "extract_keywords", {"text": message, "num": 5}
+            )
+            results.append(skill_result)
+
+        return results
+
+    def _build_prompt(
+        self,
+        message: str,
+        session_id: str,
+        context_results: List[Dict[str, Any]],
+        tool_results: List[ToolResult],
+        skill_results: List[SkillResult]
+    ) -> str:
+        history: str = self.memory.get_conversation_history(limit=10)
+        context_str: str = self.context.build_context_prompt(session_id, max_entries=10)
+
+        if context_results:
+            context_parts: List[str] = []
+            for i, doc in enumerate(context_results[:3]):
+                score = doc.get('combined_score', doc.get('similarity', 0))
+                context_parts.append(f"[{i+1}](Score: {score:.2f}) {doc['content'][:300]}")
+            context_str += "\n\nKnowledge Base:\n" + "\n\n".join(context_parts)
+
+        if tool_results:
+            tool_parts: List[str] = [tr.formatted_result for tr in tool_results]
+            context_str += "\n\nTool Results:\n" + "\n".join(tool_parts)
+
+        system_prompt: str = self.config.system_prompt or self.prompts.render(
+            "system_prompt",
+            current_time=time.strftime("%Y-%m-%d %H:%M:%S")
+        )
+
+        prompt: str = f"""{system_prompt}
+
+Conversation History:
+{history or 'No previous messages'}
+
+{context_str and f'Additional Context:\n{context_str}' or ''}
+
+User: {message}
+
+Assistant:"""
+
+        return prompt
+
+    def _generate_response(self, prompt: str) -> str:
+        try:
+            import os
+
+            chat_model = os.getenv("CHAT_MODEL", "minimax")
+            api_key = self._get_api_key()
+
+            if chat_model == "minimax":
+                return self._generate_minimax_response(prompt, api_key)
+            else:
+                return self._generate_dashscope_response(prompt, api_key)
+
+        except Exception as e:
+            return f"Error generating response: {str(e)}"
+
+    def _generate_minimax_response(self, prompt: str, api_key: str) -> str:
+        try:
+            import requests
+
+            # MiniMax Portal API (Anthropic-compatible, same as OpenClaw uses)
+            url = "https://api.minimaxi.com/anthropic/v1/messages"
+
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "anthropic-version": "2023-06-01"
+            }
+
+            data = {
+                "model": "MiniMax-M2.7",
+                "max_tokens": self.config.max_tokens or 1024,
+                "temperature": self.config.temperature,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+
+            resp = requests.post(url, headers=headers, json=data, timeout=60)
+
+            if resp.status_code == 200:
+                result = resp.json()
+                content = result.get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if block.get("type") == "text":
+                            return block.get("text", "")
+                return str(result)
+            elif resp.status_code == 401:
+                return f"Error: MiniMax API unauthorized (401) - check API key"
+            elif resp.status_code == 429:
+                return f"Error: MiniMax API rate limited (429) - 请稍后再试"
+            else:
+                return f"Error: MiniMax API returned {resp.status_code}: {resp.text[:500]}"
+
+        except Exception as e:
+            return f"Error generating MiniMax response: {str(e)}"
+
+    def _generate_dashscope_response(self, prompt: str, api_key: str) -> str:
+        try:
+            from dashscope import Generation
+            import dashscope
+            dashscope.api_key = api_key
+
+            resp = Generation.call(
+                model=self.config.model,
+                prompt=prompt,
+                temperature=self.config.temperature,
+                top_p=self.config.top_p,
+                max_tokens=self.config.max_tokens,
+                result_format="message",
+            )
+
+            if resp.status_code != 200:
+                return f"Error: {resp.message}"
+
+            return resp.output["choices"][0]["message"]["content"]
+        except Exception as e:
+            return f"Error generating DashScope response: {str(e)}"
+
+    def _get_api_key(self) -> str:
+        import os
+        chat_model = os.getenv("CHAT_MODEL", "minimax")
+        if chat_model == "minimax":
+            return os.getenv("MINIMAX_API_KEY", os.getenv("DASHSCOPE_API_KEY", ""))
+        return os.getenv("DASHSCOPE_API_KEY", "")
+
+    def get_session_info(self, session_id: Optional[str] = None) -> Dict[str, Any]:
+        sid: str = session_id or "default"
+        return {
+            "session_id": sid,
+            "memory": self.memory.get_session_summary(),
+            "context": self.context.get_context_stats(sid),
+            "config": self.config.to_dict()
+        }
+
+    def reset_session(self, session_id: Optional[str] = None) -> bool:
+        sid: str = session_id or "default"
+        self.memory.clear_short_term()
+        self.context.clear_session(sid)
+        return True
+
+
+class AgentManager:
+    _instance: Optional["AgentManager"] = None
+    _lock_class: threading.RLock = threading.RLock()
+
+    def __new__(cls) -> "AgentManager":
+        if cls._instance is None:
+            with cls._lock_class:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._init()
+        return cls._instance
+
+    def _init(self) -> None:
+        self._agents: Dict[str, Agent] = {}
+        self._lock: threading.RLock = threading.RLock()
+        self._initialized: bool = False
+
+    def create_agent(
+        self,
+        agent_id: Optional[str] = None,
+        config: Optional[AgentConfig] = None
+    ) -> Agent:
+        aid: str = agent_id or uuid.uuid4().hex[:12]
+
+        with self._lock:
+            if aid in self._agents:
+                return self._agents[aid]
+
+            agent = Agent(config=config)
+            self._agents[aid] = agent
+            return agent
+
+    def get_agent(self, agent_id: str) -> Optional[Agent]:
+        with self._lock:
+            return self._agents.get(agent_id)
+
+    def delete_agent(self, agent_id: str) -> bool:
+        with self._lock:
+            if agent_id in self._agents:
+                del self._agents[agent_id]
+                return True
+            return False
+
+    def list_agents(self) -> List[str]:
+        with self._lock:
+            return list(self._agents.keys())
+
+    def get_all_configs(self) -> Dict[str, Dict[str, Any]]:
+        with self._lock:
+            return {
+                agent_id: agent.config.to_dict()
+                for agent_id, agent in self._agents.items()
+            }
+
+    @classmethod
+    def reset_instance(cls) -> None:
+        with cls._lock_class:
+            cls._instance = None

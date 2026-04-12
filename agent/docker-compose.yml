@@ -1,0 +1,52 @@
+# 暖学帮 Docker Compose 配置
+version: '3.8'
+
+services:
+  # Agent 服务
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nuanxuebang-agent
+    restart: unless-stopped
+    ports:
+      - "5177:5177"
+    environment:
+      - FLASK_ENV=production
+      - LOG_LEVEL=INFO
+      - PYTHONPATH=/app
+    volumes:
+      # 持久化数据
+      - agent_data:/app/data
+      # 日志
+      - ./logs:/app/logs
+    networks:
+      - nuanxuebang-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5177/api/v5/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ChromaDB 向量数据库 (可选，需要时可启用)
+  # chromadb:
+  #   image: chromadb/chroma:latest
+  #   container_name: nuanxuebang-chroma
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - chroma_data:/chroma/chroma
+  #   networks:
+  #     - nuanxuebang-net
+
+volumes:
+  agent_data:
+    driver: local
+  # chroma_data:
+  #   driver: local
+
+networks:
+  nuanxuebang-net:
+    driver: bridge

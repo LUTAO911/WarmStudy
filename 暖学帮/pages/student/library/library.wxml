@@ -1,0 +1,182 @@
+<view class="page">
+
+  <!-- ===== 头部：心理状态概览 ===== -->
+  <view class="psych-header">
+    <view class="psych-welcome">
+      <text class="welcome-text">{{userInfo.name}}的心理成长中心 🌸</text>
+      <text class="date-text">{{userInfo.grade}}{{userInfo.class}}</text>
+    </view>
+    
+    <!-- 今日状态卡片 -->
+    <view class="today-mood-card">
+      <view class="mood-main">
+        <text class="mood-icon">{{userInfo.moodIcon}}</text>
+        <view class="mood-info">
+          <text class="mood-label">{{userInfo.moodLabel}}</text>
+          <text class="mood-score">今日状态 {{userInfo.todayMood * 100}}分</text>
+        </view>
+        <view class="mood-btn" bindtap="onMoodCheckin">
+          <text>{{todayChecked ? '已打卡' : '去打卡'}}</text>
+        </view>
+      </view>
+      <view class="mood-track">
+        <view class="mood-fill" style="width: {{userInfo.todayMood * 100}}%"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 心理功能入口 ===== -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">🌟 心理成长</text>
+      <text class="section-more" bindtap="onPsychCardTap" data-card="{id: 'more'}">更多</text>
+    </view>
+    
+    <view class="psych-grid">
+      <view 
+        class="psych-card" 
+        wx:for="{{psychCards}}" 
+        wx:key="id"
+        bindtap="onPsychCardTap" 
+        data-card="{{item}}"
+        style="background: {{item.bgColor}}"
+      >
+        <text class="card-icon">{{item.icon}}</text>
+        <text class="card-title">{{item.title}}</text>
+        <text class="card-desc">{{item.desc}}</text>
+        <view class="card-tag" wx:if="{{item.tag}}">{{item.tag}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 本周心理趋势 ===== -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">📈 本周心理趋势</text>
+      <text class="section-more" bindtap="showWeeklyReport">查看详情</text>
+    </view>
+    
+    <view class="week-trend-card">
+      <view class="trend-main">
+        <view class="trend-score">
+          <text class="score-num">{{reportData.averageScore}}</text>
+          <text class="score-unit">分</text>
+        </view>
+        <view class="trend-info">
+          <text class="trend-label">本周平均分</text>
+          <view class="trend-badge {{reportData.trend}}">
+            <text wx:if="{{reportData.trend === 'up'}}">↑ 上升中</text>
+            <text wx:elif="{{reportData.trend === 'down'}}">↓ 下降</text>
+            <text wx:else>→ 平稳</text>
+          </view>
+        </view>
+      </view>
+      
+      <canvas type="2d" id="weekChart" class="week-chart"></canvas>
+      
+      <view class="trend-suggestions">
+        <text class="suggestions-title">💡 建议</text>
+        <view class="suggestion-item" wx:for="{{reportData.suggestions}}" wx:key="index">
+          <text>{{index + 1}}. {{item}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 心理知识推荐 ===== -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">📚 心理知识</text>
+      <text class="section-more" bindtap="showKnowledgeList">查看更多</text>
+    </view>
+    
+    <view class="knowledge-list">
+      <view 
+        class="knowledge-item" 
+        wx:for="{{knowledgeList}}" 
+        wx:key="id"
+        bindtap="onKnowledgeTap" 
+        data-item="{{item}}"
+      >
+        <view class="knowledge-content">
+          <view class="knowledge-header">
+            <text class="knowledge-category">{{item.category}}</text>
+            <view class="knowledge-new" wx:if="{{item.isNew}}">新</view>
+          </view>
+          <text class="knowledge-title">{{item.title}}</text>
+          <text class="knowledge-summary">{{item.summary}}</text>
+          <text class="knowledge-time">阅读 {{item.readTime}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 紧急求助入口 ===== -->
+  <view class="crisis-banner" bindtap="onCrisisHelp">
+    <text class="crisis-icon">🆘</text>
+    <view class="crisis-info">
+      <text class="crisis-title">需要帮助？</text>
+      <text class="crisis-desc">如果你感到心理困扰，请告诉我们或寻求专业帮助</text>
+    </view>
+    <text class="crisis-arrow">›</text>
+  </view>
+
+  <view style="height: 40rpx"></view>
+
+  <!-- ===== 情绪打卡弹窗 ===== -->
+  <view class="modal {{showMoodPicker ? 'show' : ''}}" wx:if="{{showMoodPicker}}">
+    <view class="modal-mask" bindtap="closeMoodPicker"></view>
+    <view class="modal-content mood-picker">
+      <view class="modal-header">
+        <text class="modal-title">今日心情怎么样？ 🌸</text>
+        <text class="modal-close" bindtap="closeMoodPicker">×</text>
+      </view>
+      
+      <view class="mood-options">
+        <view 
+          class="mood-option" 
+          wx:for="{{[1, 2, 3, 4, 5]}}" 
+          wx:key="index"
+          bindtap="onMoodSelect" 
+          data-value="{{item}}"
+        >
+          <text class="mood-emoji">
+            {{item === 1 ? '😢' : item === 2 ? '😔' : item === 3 ? '😐' : item === 4 ? '😊' : '🥰'}}
+          </text>
+          <text class="mood-text">
+            {{item === 1 ? '很差' : item === 2 ? '不太好' : item === 3 ? '一般' : item === 4 ? '还不错' : '很棒'}}
+          </text>
+        </view>
+      </view>
+      
+      <view class="mood-hint">
+        <text>每天记录心情，帮助你更好地了解自己 💙</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 知识详情弹窗 ===== -->
+  <view class="modal {{showKnowledgeModal ? 'show' : ''}}" wx:if="{{showKnowledgeModal}}">
+    <view class="modal-mask" bindtap="closeKnowledgeModal"></view>
+    <view class="modal-content knowledge-modal">
+      <view class="modal-header">
+        <text class="modal-title">{{selectedKnowledge.title}}</text>
+        <text class="modal-close" bindtap="closeKnowledgeModal">×</text>
+      </view>
+      
+      <view class="knowledge-detail">
+        <view class="detail-meta">
+          <text class="detail-category">{{selectedKnowledge.category}}</text>
+          <text class="detail-time">阅读 {{selectedKnowledge.readTime}}</text>
+        </view>
+        <text class="detail-summary">{{selectedKnowledge.summary}}</text>
+      </view>
+      
+      <view class="modal-actions">
+        <button class="action-btn primary" bindtap="readKnowledge">阅读全文</button>
+      </view>
+    </view>
+  </view>
+
+  <tab-bar />
+</view>

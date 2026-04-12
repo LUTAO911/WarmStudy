@@ -1,0 +1,66 @@
+<view class="page">
+  <!-- 顶部栏 -->
+  <view class="top-bar">
+    <view class="top-bar-left" bindtap="goBack">
+      <text class="back-icon">‹</text>
+    </view>
+    <text class="top-bar-title">预警中心</text>
+    <view class="top-bar-right" bindtap="onMarkAllRead">
+      <text class="mark-all-read">全部已读</text>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && alerts.length === 0}}">
+    <text class="empty-icon">🔔</text>
+    <text class="empty-text">暂无预警</text>
+    <text class="empty-sub">孩子状态良好，继续保持关注</text>
+  </view>
+
+  <!-- 预警列表 -->
+  <view class="alert-list" wx:else>
+    <view
+      class="alert-item {{alert.is_read ? 'read' : 'unread'}}"
+      wx:for="{{alerts}}"
+      wx:key="id"
+      bindtap="onTapAlert"
+      data-alert="{{item}}"
+    >
+      <!-- 左侧图标 -->
+      <view class="alert-icon-wrap" style="background:{{alertTypeMap[item.alert_type].bg}}">
+        <text class="alert-icon" style="color:{{alertTypeMap[item.alert_type].color}}">
+          {{alertTypeMap[item.alert_type].icon}}
+        </text>
+      </view>
+
+      <!-- 中间内容 -->
+      <view class="alert-content">
+        <view class="alert-header">
+          <text class="alert-title">{{item.title}}</text>
+          <view class="alert-tag" style="background:{{alertTypeMap[item.alert_type].color}}">
+            {{alertTypeMap[item.alert_type].label}}
+          </view>
+          <view class="alert-unread-dot" wx:if="{{!item.is_read}}"></view>
+        </view>
+        <text class="alert-body">{{item.content}}</text>
+        <text class="alert-meta">
+          {{item.child_name}} · {{item.created_at}}
+        </text>
+      </view>
+
+      <!-- 未读指示 -->
+      <view class="alert-read-indicator" wx:if="{{!item.is_read}}"></view>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="load-more" wx:if="{{hasMore && !loading}}" bindtap="loadMore">
+      <text>加载更多</text>
+    </view>
+    <view class="load-more" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+    <view class="load-more no-more" wx:if="{{!hasMore && alerts.length > 0}}">
+      <text>— 已加载全部 —</text>
+    </view>
+  </view>
+</view>
