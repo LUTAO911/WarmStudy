@@ -790,7 +790,7 @@ class Agent:
 
         return (
             f"{system_prompt}\n\n"
-            f"Conversation History:\n{history or "No previous messages"}\n\n"
+            f'Conversation History:\n{history or "No previous messages"}\n\n'
             + (f"Additional Context:\n{ctx}\n\n" if ctx else "\n")
             + f"User: {message}\n\nAssistant:"
         )
