@@ -7,11 +7,12 @@ import os
 import time
 import json
 import random
-from flask import Flask, request, jsonify
+from pathlib import Path
+from flask import Flask, request, jsonify, render_template
 from datetime import datetime, timedelta
 from functools import wraps
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates", static_folder="static")
 
 RAG_AGENT_URL = os.getenv("RAG_AGENT_URL", "http://localhost:5177")
 
@@ -80,6 +81,9 @@ def login_by_phone():
 
 @app.route("/api/student/chat", methods=["POST"])
 def student_chat():
+    """
+    学生心理陪伴对话 - 代理到5177 RAG服务（接入Qwen模型）
+    """
     data = request.get_json()
     user_id = data.get("user_id", get_current_user())
     message = data.get("message", "")
@@ -90,32 +94,28 @@ def student_chat():
     try:
         import requests
         resp = requests.post(
-            f"{RAG_AGENT_URL}/api/chat",
-            json={"query": message, "use_hybrid": True},
+            f"{RAG_AGENT_URL}/api/student/chat",
+            json={"user_id": user_id, "message": message},
             timeout=30
         )
         if resp.status_code == 200:
             result = resp.json()
             return jsonify({
                 "success": True,
-                "response": result.get("answer", "抱歉，我现在无法回答这个问题。"),
-                "ai_name": "暖暖"
+                "response": result.get("response", result.get("answer", "")),
+                "ai_name": "暖暖",
+                "emotion": result.get("emotion", "neutral"),
+                "crisis_level": result.get("crisis_level", "safe"),
+                "type": result.get("type", "normal_support")
             })
     except Exception as e:
-        print(f"[聊天] 调用RAG服务失败: {e}")
-
-    ai_responses = [
-        "我理解你的感受。每个人都会有压力大的时候，这很正常。",
-        "听起来你遇到了困难。让我们一起想办法解决好吗？",
-        "你很棒！继续保持积极的心态，一切都会好起来的。",
-        "学习固然重要，但也要注意休息和放松哦。",
-        "遇到问题不要着急，慢慢来，你一定能克服的！"
-    ]
+        print(f"[学生聊天] 调用RAG服务失败: {e}")
 
     return jsonify({
         "success": True,
-        "response": random.choice(ai_responses),
-        "ai_name": "暖暖"
+        "response": "抱歉，服务暂时不可用，请稍后再试。",
+        "ai_name": "暖暖",
+        "type": "fallback"
     })
 
 @app.route("/api/student/checkin", methods=["POST"])
@@ -239,6 +239,9 @@ def get_psych_status(user_id):
 
 @app.route("/api/parent/chat", methods=["POST"])
 def parent_chat():
+    """
+    家长对话 - 代理到5177 RAG服务（接入Qwen模型）
+    """
     data = request.get_json()
     user_id = data.get("user_id", get_current_user())
     message = data.get("message", "")
@@ -246,17 +249,29 @@ def parent_chat():
     if not message:
         return format_error("消息内容不能为空")
 
-    advice_responses = [
-        "建议您多关注孩子的情绪变化，保持良好的沟通。",
-        "每个孩子都有自己的节奏，不要过于焦虑。",
-        "可以尝试和孩子一起做一些轻松的活动，增进亲子关系。",
-        "注意观察孩子的学习状态，适时给予鼓励和支持。",
-        "建议保持规律的作息时间，这对孩子的身心发展很重要。"
-    ]
+    try:
+        import requests
+        resp = requests.post(
+            f"{RAG_AGENT_URL}/api/parent/chat",
+            json={"user_id": user_id, "message": message},
+            timeout=30
+        )
+        if resp.status_code == 200:
+            result = resp.json()
+            return jsonify({
+                "success": True,
+                "response": result.get("response", result.get("answer", "")),
+                "ai_name": "暖暖",
+                "type": result.get("type", "normal_support")
+            })
+    except Exception as e:
+        print(f"[家长聊天] 调用RAG服务失败: {e}")
 
     return jsonify({
         "success": True,
-        "response": random.choice(advice_responses)
+        "response": "抱歉，服务暂时不可用，请稍后再试。",
+        "ai_name": "暖暖",
+        "type": "fallback"
     })
 
 @app.route("/api/parent/child/<child_id>/status", methods=["GET"])
@@ -390,16 +405,12 @@ def health_check():
 
 @app.route("/", methods=["GET"])
 def index():
-    return jsonify({
-        "service": "暖学帮 API Gateway",
-        "version": "1.0.0",
-        "endpoints": [
-            "/api/auth/*",
-            "/api/student/*",
-            "/api/parent/*",
-            "/api/health"
-        ]
-    })
+    """
+    暖学帮 - 青少年心理陪伴 AI 对话界面
+    接入 Qwen/Tongyi 大模型
+    """
+    return render_template("psychology_test.html")
+
 
 if __name__ == "__main__":
     print("\n" + "="*50)

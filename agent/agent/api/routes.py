@@ -734,3 +734,269 @@ def clear_cache():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ========== 心理支持 API ==========
+
+
+@agent_bp.route("/psychology/emotion", methods=["POST"])
+@require_auth("chat")
+def detect_emotion() -> tuple[Dict[str, Any], int]:
+    """
+    情绪识别 API
+    输入用户文本，返回情绪类型、强度、关键词和建议
+    """
+    try:
+        data: Dict[str, Any] = request.get_json()
+        text: str = data.get("text", "").strip()
+
+        if not text:
+            return jsonify({"ok": False, "error": "Text is required"}), 400
+
+        from agent.tools.psychology import get_psychology_tools
+        pt = get_psychology_tools()
+        result = pt.detect_emotion(text)
+
+        return jsonify({
+            "ok": True,
+            "emotion": result
+        }), 200
+
+    except Exception as e:
+        _logger.log_error("EmotionDetectionError", str(e))
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@agent_bp.route("/psychology/crisis", methods=["POST"])
+@require_auth("chat")
+def check_crisis() -> tuple[Dict[str, Any], int]:
+    """
+    危机检测 API
+    检测自杀倾向、自伤等危机信号
+    """
+    try:
+        data: Dict[str, Any] = request.get_json()
+        text: str = data.get("text", "").strip()
+
+        if not text:
+            return jsonify({"ok": False, "error": "Text is required"}), 400
+
+        from agent.tools.psychology import get_psychology_tools
+        pt = get_psychology_tools()
+        result = pt.check_crisis(text)
+
+        return jsonify({
+            "ok": True,
+            "crisis": result
+        }), 200
+
+    except Exception as e:
+        _logger.log_error("CrisisDetectionError", str(e))
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@agent_bp.route("/psychology/knowledge", methods=["GET"])
+@require_auth("chat")
+def search_psychology_knowledge() -> tuple[Dict[str, Any], int]:
+    """
+    心理知识检索 API
+    """
+    try:
+        query: str = request.args.get("q", "").strip()
+        user_type: str = request.args.get("user_type", "student").strip()
+        n_results: int = request.args.get("n", 5, type=int)
+
+        if not query:
+            return jsonify({"ok": False, "error": "Query is required"}), 400
+
+        from agent.tools.psychology import get_psychology_tools
+        pt = get_psychology_tools()
+        result = pt.search_psychology_knowledge(
+            query=query,
+            user_type=user_type,
+            n_results=n_results
+        )
+
+        return jsonify({
+            "ok": True,
+            **result
+        }), 200
+
+    except Exception as e:
+        _logger.log_error("PsychologyKnowledgeError", str(e))
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@agent_bp.route("/psychology/categories", methods=["GET"])
+@require_auth("chat")
+def get_psychology_categories() -> tuple[Dict[str, Any], int]:
+    """
+    获取心理知识分类 API
+    """
+    try:
+        user_type: str = request.args.get("user_type", "student").strip()
+
+        from agent.tools.psychology import get_psychology_tools
+        pt = get_psychology_tools()
+        categories = pt.get_all_categories(user_type=user_type)
+
+        return jsonify({
+            "ok": True,
+            "categories": categories,
+            "user_type": user_type
+        }), 200
+
+    except Exception as e:
+        _logger.log_error("PsychologyCategoriesError", str(e))
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@agent_bp.route("/psychology/knowledge/category", methods=["GET"])
+@require_auth("chat")
+def get_psychology_by_category() -> tuple[Dict[str, Any], int]:
+    """
+    按分类获取心理知识 API
+    """
+    try:
+        category: str = request.args.get("category", "").strip()
+        user_type: str = request.args.get("user_type", "student").strip()
+
+        if not category:
+            return jsonify({"ok": False, "error": "Category is required"}), 400
+
+        from agent.tools.psychology import get_psychology_tools
+        pt = get_psychology_tools()
+        result = pt.get_knowledge_by_category(
+            category=category,
+            user_type=user_type
+        )
+
+        return jsonify({
+            "ok": True,
+            **result
+        }), 200
+
+    except Exception as e:
+        _logger.log_error("PsychologyCategoryError", str(e))
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@agent_bp.route("/psychology/support", methods=["POST"])
+@require_auth("chat")
+def psychological_support() -> tuple[Dict[str, Any], int]:
+    """
+    综合心理支持 API
+    整合情绪识别 + 危机检测 + 知识检索 + 共情回复
+    """
+    try:
+        data: Dict[str, Any] = request.get_json()
+        user_input: str = data.get("user_input", "").strip()
+        user_type: str = data.get("user_type", "student").strip()
+
+        if not user_input:
+            return jsonify({"ok": False, "error": "User input is required"}), 400
+
+        from agent.tools.psychology import get_psychology_tools
+        pt = get_psychology_tools()
+        result = pt.psychological_support(
+            user_input=user_input,
+            user_type=user_type
+        )
+
+        return jsonify({
+            "ok": True,
+            **result
+        }), 200
+
+    except Exception as e:
+        _logger.log_error("PsychologicalSupportError", str(e))
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@agent_bp.route("/psychology/chat", methods=["POST"])
+@require_auth("chat")
+def psychology_chat() -> tuple[Dict[str, Any], int]:
+    """
+    心理陪伴对话 API
+    基于Agent的心理支持对话，优先使用心理工具
+    """
+    start_time = time.time()
+
+    try:
+        data: Dict[str, Any] = request.get_json()
+
+        message: str = data.get("message", "").strip()
+        session_id: str = data.get("session_id", "psychology_default")
+        user_type: str = data.get("user_type", "student").strip()
+
+        if not message:
+            return jsonify({"ok": False, "error": "Message is required"}), 400
+
+        # 使用心理支持工具
+        from agent.tools.psychology import get_psychology_tools
+        pt = get_psychology_tools()
+
+        # 1. 危机检测（优先）
+        crisis_result = pt.check_crisis(message)
+
+        # 2. 情绪识别
+        emotion_result = pt.detect_emotion(message)
+
+        # 3. 根据危机等级处理
+        crisis_level = crisis_result.get("level", "safe")
+        if crisis_level in ("medium", "high", "critical"):
+            # 危机情况，返回干预响应
+            from agent.modules.psychology.crisis import CrisisResult, CrisisLevel
+            crisis_obj = CrisisResult(
+                level=CrisisLevel(crisis_level),
+                signals=crisis_result.get("signals", []),
+                message=crisis_result.get("message", ""),
+                action=crisis_result.get("action", ""),
+                hotlines=crisis_result.get("hotlines", [])
+            )
+            intervention = pt._crisis_detector.get_response(crisis_obj)
+            execution_time = time.time() - start_time
+            return jsonify({
+                "ok": True,
+                "type": "crisis_intervention",
+                "crisis": crisis_result,
+                "emotion": emotion_result,
+                "response": intervention,
+                "execution_time": round(execution_time, 3)
+            }), 200
+
+        # 4. 正常心理陪伴对话
+        # 获取相关知识
+        knowledge_result = pt.search_psychology_knowledge(
+            query=message,
+            user_type=user_type,
+            n_results=3
+        )
+
+        # 生成共情回复
+        empathic_response = pt.generate_empathic_response(
+            user_input=message,
+            emotion=emotion_result.get("emotion"),
+            context={"knowledge": knowledge_result}
+        )
+
+        execution_time = time.time() - start_time
+
+        return jsonify({
+            "ok": True,
+            "type": "normal_support",
+            "emotion": emotion_result,
+            "crisis": crisis_result,
+            "knowledge": knowledge_result,
+            "response": empathic_response,
+            "execution_time": round(execution_time, 3)
+        }), 200
+
+    except Exception as e:
+        execution_time = time.time() - start_time
+        _logger.log_error("PsychologyChatError", str(e))
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "execution_time": round(execution_time, 3)
+        }), 500
+
+

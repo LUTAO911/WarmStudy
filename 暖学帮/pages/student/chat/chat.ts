@@ -403,9 +403,27 @@ Page({
     this.setData({ streamingContent: '', loading: true });
 
     studentChat(userId, text)
-      .then((res: { success: boolean; response: string }) => {
+      .then((res: {
+        success: boolean;
+        response: string;
+        emotion?: string;
+        crisis_level?: string;
+        type?: string;
+      }) => {
         if (res.success) {
-          const emotion = this.detectEmotion(res.response || '');
+          // 优先使用后端返回的情绪，后端没返回则前端检测
+          let emotion: number;
+          if (res.emotion) {
+            emotion = this.emotionStrToLevel(res.emotion);
+          } else {
+            emotion = this.detectEmotion(res.response || '');
+          }
+
+          // 如果是危机干预，增加特殊标记
+          if (res.type === 'crisis_intervention') {
+            console.warn('危机检测:', res.crisis_level);
+          }
+
           this.addAIMessage(res.response, emotion);
         } else {
           throw new Error('AI回复失败');
@@ -415,6 +433,32 @@ Page({
         console.error('发送消息失败:', _err);
         this.addAIMessage(this.fallbackResponse(text), 2);
       });
+  },
+
+  /**
+   * 将后端返回的情绪字符串转换为前端emotion level
+   * emotion level: 1=平静, 2=温暖, 3=关切, 4=专注, 5=热情
+   */
+  emotionStrToLevel(emotion: string): number {
+    const map: Record<string, number> = {
+      'happy': 5,
+      '开心': 5,
+      'hopeful': 4,
+      '有希望': 4,
+      'anxious': 3,
+      '焦虑': 3,
+      'sad': 3,
+      '难过': 3,
+      'angry': 2,
+      '生气': 2,
+      'fearful': 2,
+      '害怕': 2,
+      'neutral': 1,
+      '平静': 1,
+      'ashamed': 2,
+      '羞愧': 2,
+    };
+    return map[emotion.toLowerCase()] || 2;
   },
 
   detectEmotion(text: string): number {

@@ -1,4 +1,5 @@
 declare function Page(pageConfig: IPageConfig): void;
+declare function getApp<T = IAppOption>(): T;
 
 interface IAppOption {
   globalData: {

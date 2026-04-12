@@ -435,6 +435,7 @@ def setup_builtin_tools() -> None:
     )
 
     _register_education_tools(registry)
+    _register_psychology_tools(registry)
 
 
 def _register_education_tools(registry: ToolRegistry) -> None:
@@ -534,5 +535,67 @@ def _register_education_tools(registry: ToolRegistry) -> None:
         func=me.recommend_activities,
         parameters=[
             {"name": "student_profile", "type": "object", "description": "Student profile", "required": True}
+        ]
+    )
+
+
+def _register_psychology_tools(registry: ToolRegistry) -> None:
+    """注册心理支持相关工具"""
+    from agent.tools.psychology import get_psychology_tools
+
+    pt = get_psychology_tools()
+
+    # 情绪识别
+    registry.register(
+        name="detect_emotion",
+        description="Detect user emotion from text input.",
+        func=pt.detect_emotion,
+        parameters=[
+            {"name": "text", "type": "string", "description": "User input text", "required": True}
+        ]
+    )
+
+    # 危机检测
+    registry.register(
+        name="check_crisis",
+        description="Check for crisis signals (self-harm, suicide ideation).",
+        func=pt.check_crisis,
+        parameters=[
+            {"name": "text", "type": "string", "description": "User input text", "required": True}
+        ]
+    )
+
+    # 心理知识检索
+    registry.register(
+        name="search_psychology_knowledge",
+        description="Search psychology knowledge base for mental health information.",
+        func=pt.search_psychology_knowledge,
+        parameters=[
+            {"name": "query", "type": "string", "description": "Search query", "required": True},
+            {"name": "user_type", "type": "string", "description": "User type (student/parent/teacher)", "required": False},
+            {"name": "n_results", "type": "integer", "description": "Number of results", "required": False}
+        ]
+    )
+
+    # 共情回复生成
+    registry.register(
+        name="generate_empathic_response",
+        description="Generate empathic response for psychological support.",
+        func=pt.generate_empathic_response,
+        parameters=[
+            {"name": "user_input", "type": "string", "description": "User input", "required": True},
+            {"name": "emotion", "type": "string", "description": "Detected emotion type", "required": False},
+            {"name": "context", "type": "object", "description": "Additional context", "required": False}
+        ]
+    )
+
+    # 综合心理支持
+    registry.register(
+        name="psychological_support",
+        description="Comprehensive psychological support: emotion detection + crisis check + knowledge retrieval + empathic response.",
+        func=pt.psychological_support,
+        parameters=[
+            {"name": "user_input", "type": "string", "description": "User input", "required": True},
+            {"name": "user_type", "type": "string", "description": "User type (student/parent/teacher)", "required": False}
         ]
     )

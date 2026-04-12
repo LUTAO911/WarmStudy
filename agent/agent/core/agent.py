@@ -198,6 +198,135 @@ class Agent:
         if len(self.skills.get_all()) == 0:
             setup_builtin_skills()
 
+    # ========== 心理学模式相关常量 ==========
+    PSYCHOLOGY_KEYWORDS = [
+        # 情绪类
+        "情绪", "心情", "难过", "开心", "生气", "害怕", "焦虑",
+        "压力", "紧张", "压抑", "沮喪", "失落", "空虛", "孤独",
+        "孤独感", "寂寞", "绝望", "無助",
+        # 心理状态类
+        "心理", "心事", "心事重重", "心裡", "内心", "心底",
+        "失眠", "睡不著", "早醒", "噩夢",
+        # 考试/学习压力
+        "考试压力", "学习压力", "考试焦虑", "成绩下滑", "学业压力",
+        # 人际关系
+        "人际关系", "同学关系", "朋友关系", "亲子关系", "和家庭",
+        "被孤立", "被欺负", "被排挤",
+        # 自我认知
+        "自我怀疑", "不自信", "自卑", "沒價值", "沒用",
+        # 危机信号（最高优先级）
+        "想死", "不想活", "活不下去", "死了", "輕生", "自殺",
+        "自残", "割腕", "伤害自己",
+    ]
+
+    CRISIS_KEYWORDS = [
+        "想死", "不想活", "活不下去", "死了算了", "死了好",
+        "輕生", "自殺", "自杀", "自残", "割腕", "伤害自己",
+        "上吊", "跳楼", "喝药", "一了百了", "结束生命",
+    ]
+
+    def _is_psychology_message(self, message: str) -> bool:
+        """检测消息是否与心理学相关"""
+        msg_lower = message.lower()
+        return any(kw in msg_lower for kw in self.PSYCHOLOGY_KEYWORDS)
+
+    def _is_crisis_message(self, message: str) -> bool:
+        """检测消息是否包含危机信号"""
+        msg_lower = message.lower()
+        return any(kw in msg_lower for kw in self.CRISIS_KEYWORDS)
+
+    def _handle_psychology_mode(self, message: str, sid: str) -> tuple:
+        """
+        处理心理学模式查询
+        优先使用心理学工具，返回(answer, tool_results, context_used)
+        """
+        from agent.tools.psychology import get_psychology_tools
+
+        pt = get_psychology_tools()
+        tool_results = []
+
+        # 1. 危机检测（最高优先级）
+        crisis_result = pt.check_crisis(message)
+        crisis_level = crisis_result.get("level", "safe")
+
+        # 2. 情绪识别
+        emotion_result = pt.detect_emotion(message)
+        tool_results.append({
+            "tool_name": "detect_emotion",
+            "status": "success",
+            "result": emotion_result
+        })
+
+        # 3. 如果是危机情况
+        if crisis_level in ("medium", "high", "critical"):
+            from agent.modules.psychology.crisis import CrisisResult, CrisisLevel
+            crisis_obj = CrisisResult(
+                level=CrisisLevel(crisis_level),
+                signals=crisis_result.get("signals", []),
+                message=crisis_result.get("message", ""),
+                action=crisis_result.get("action", ""),
+                hotlines=crisis_result.get("hotlines", [])
+            )
+            intervention = pt._crisis_detector.get_response(crisis_obj)
+            tool_results.append({
+                "tool_name": "check_crisis",
+                "status": "success",
+                "result": crisis_result
+            })
+            return intervention, tool_results, True
+
+        # 4. 正常心理陪伴对话
+        # 检索相关心理知识
+        knowledge_result = pt.search_psychology_knowledge(
+            query=message,
+            user_type="student",
+            n_results=3
+        )
+        tool_results.append({
+            "tool_name": "search_psychology_knowledge",
+            "status": "success",
+            "result": knowledge_result
+        })
+
+        # 5. 用LLM生成共情回复（接入Qwen/Tongyi）
+        emotion_label = emotion_result.get("emotion", "neutral")
+        emotion_desc = emotion_result.get("description", "")
+        
+        # 构建知识上下文
+        knowledge_text = ""
+        if knowledge_result and knowledge_result.get("results"):
+            for r in knowledge_result["results"]:
+                knowledge_text += f"- {r.get('content', '')}\n"
+        
+        # 构建LLM提示词
+        if knowledge_text:
+            llm_prompt = f"""你是一位温暖、专业的青少年心理陪伴助手"暖暖"。请根据以下信息，用温暖共情的语气回复学生。
+
+学生的话：{message}
+
+检测到的情绪：{emotion_label}（{emotion_desc}）
+
+相关心理知识：
+{knowledge_text}
+
+请结合心理知识，用温暖、理解的语气回复，回复长度适中（100-200字），体现共情和理解。如果适合，给出一些积极的建议。
+
+回复："""
+        else:
+            llm_prompt = f"""你是一位温暖、专业的青少年心理陪伴助手"暖暖"。请用温暖共情的语气回复学生。
+
+学生的话：{message}
+
+检测到的情绪：{emotion_label}（{emotion_desc}）
+
+请用温暖、理解的语气回复（100-200字），体现共情和关心。如果适合，给出一些积极的建议。
+
+回复："""
+
+        empathic_response = self._generate_response(llm_prompt)
+
+        return empathic_response, tool_results, True
+
     def chat(self,
         message: str,
         session_id: Optional[str] = None,
@@ -217,6 +346,31 @@ class Agent:
         use_rerank = use_rerank if use_rerank is not None else self.config.rerank_default
 
         self.memory.add_user_message(message, {"session_id": sid})
+
+        # ========== 心理学模式路由 ==========
+        # 如果消息与心理学相关，优先使用心理学工具处理
+        if self._is_psychology_message(message):
+            psychology_answer, psychology_tool_results, _ = self._handle_psychology_mode(message, sid)
+            self.memory.add_assistant_message(psychology_answer, {
+                "session_id": sid,
+                "mode": "psychology",
+                "tool_calls": len(psychology_tool_results),
+            })
+            return AgentResponse(
+                answer=psychology_answer,
+                sources=(),
+                tool_results=tuple(psychology_tool_results),
+                skill_results=(),
+                context_used=True,
+                metadata=tuple({
+                    "session_id": sid,
+                    "mode": "psychology",
+                    "need_rag": False,
+                    "need_tools": True,
+                    "psychology_mode": True,
+                }.items()),
+                execution_time=time.time() - start_time,
+            )
 
         # Step 1: LLM 判断是否需要 RAG / Tools
         need_rag, need_tools = self._llm_judge_needs(message, sid)
@@ -357,7 +511,10 @@ class Agent:
 
     def _keyword_tools(self, message: str) -> bool:
         keywords = ["计算", "时间", "现在", "几点", "日期", "搜索",
-                     "查询", "查一下", "帮我找", "天气"]
+                     "查询", "查一下", "帮我找", "天气",
+                     # 心理学相关
+                     "情绪", "心情", "压力", "焦虑", "难过", "开心",
+                     "心理", "心理问题", "心理咨询"]
         return any(k in message for k in keywords)
 
     def _react_loop(self, message: str, sid: str,

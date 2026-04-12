@@ -1,153 +1,182 @@
 <view class="page">
-  <!-- ===== 头部：登录信息 + 绑定家长 ===== -->
-  <view class="user-header">
-    <view class="user-info-row">
-      <image class="user-avatar" src="/images/user-avatar.png" mode="aspectFill"/>
-      <view class="user-detail">
-        <text class="user-name">{{userInfo.name}}</text>
-        <text class="user-class">{{userInfo.grade}}{{userInfo.class}} · {{userInfo.studentId}}</text>
-      </view>
-      <view class="bind-parent-btn {{userInfo.parentBound ? 'bound' : ''}}" bindtap="onBindParent">
-        <text>{{userInfo.parentBound ? '✓ 已绑定家长' : '📷 扫码绑定'}}</text>
-      </view>
-    </view>
-    <!-- 心理状态指示条 -->
-    <view class="psych-bar">
-      <text class="psych-label">今日心理状态</text>
-      <view class="psych-track">
-        <view class="psych-fill" style="width: {{userInfo.todayMood * 10}}%"></view>
-      </view>
-      <text class="psych-score">{{userInfo.todayMood * 10}}分</text>
-    </view>
-  </view>
 
-  <!-- ===== 今日待办 ===== -->
-  <view class="section section-todo">
-    <view class="section-header">
-      <text class="section-title">✨ 今日待办</text>
-      <text class="add-btn" bindtap="onAddTodo">+ 添加任务</text>
+  <!-- ===== 头部：心理状态概览 ===== -->
+  <view class="psych-header">
+    <view class="psych-welcome">
+      <text class="welcome-text">{{userInfo.name}}的心理成长中心 🌸</text>
+      <text class="date-text">{{userInfo.grade}}{{userInfo.class}}</text>
     </view>
-    <view class="todo-list">
-      <view class="todo-item {{item.done ? 'done' : ''}}" wx:for="{{todoList}}" wx:key="id">
-        <view class="todo-check" bindtap="onToggleTodo" data-id="{{item.id}}">
-          <text class="check-icon {{item.done ? 'green' : 'red'}}">{{item.done ? '✓' : '○'}}</text>
+    
+    <!-- 今日状态卡片 -->
+    <view class="today-mood-card">
+      <view class="mood-main">
+        <text class="mood-icon">{{userInfo.moodIcon}}</text>
+        <view class="mood-info">
+          <text class="mood-label">{{userInfo.moodLabel}}</text>
+          <text class="mood-score">今日状态 {{userInfo.todayMood * 100}}分</text>
         </view>
-        <text class="todo-text">{{item.text}}</text>
-        <text class="todo-source {{item.source}}">{{sourceMap[item.source] || item.source}}</text>
-        <text class="todo-del" bindtap="onDelTodo" data-id="{{item.id}}">×</text>
+        <view class="mood-btn" bindtap="onMoodCheckin">
+          <text>{{todayChecked ? '已打卡' : '去打卡'}}</text>
+        </view>
       </view>
-      <view class="empty-tip" wx:if="{{todoList.length === 0}}">暂无待办，添加一个吧</view>
+      <view class="mood-track">
+        <view class="mood-fill" style="width: {{userInfo.todayMood * 100}}%"></view>
+      </view>
     </view>
   </view>
 
-  <!-- ===== 功能入口 ===== -->
-  <view class="feature-grid">
-    <!-- 左列 -->
-    <view class="feature-card" bindtap="onFeatureTap" data-type="wrongbook">
-      <view class="feature-icon" style="background:#ffebee">
-        <text style="color:#f44336;font-size:40rpx">📝</text>
-      </view>
-      <text class="feature-title">错题本</text>
-      <text class="feature-desc">已收录 {{wrongBookCount}} 道错题</text>
-    </view>
-
-    <view class="feature-card" bindtap="onFeatureTap" data-type="grade">
-      <view class="feature-icon" style="background:#fff3e0">
-        <text style="color:#ff9500;font-size:40rpx">🔒</text>
-      </view>
-      <text class="feature-title">智学网查成绩</text>
-      <text class="feature-desc">对接后一键同步</text>
-      <view class="feature-badge">预约</view>
-    </view>
-
-    <!-- 右列 -->
-    <view class="feature-card" bindtap="onFeatureTap" data-type="aitest">
-      <view class="feature-icon" style="background:#e3f2fd">
-        <text style="color:#2196f3;font-size:40rpx">✏️</text>
-      </view>
-      <text class="feature-title">AI出题测试</text>
-      <text class="feature-desc">根据教材智能出题</text>
-    </view>
-
-    <view class="feature-card" bindtap="onFeatureTap" data-type="analysis">
-      <view class="feature-icon" style="background:#f3e5f5">
-        <text style="color:#9c27b0;font-size:40rpx">📊</text>
-      </view>
-      <text class="feature-title">成绩分析</text>
-      <text class="feature-desc">薄弱点诊断</text>
-    </view>
-  </view>
-
-  <!-- ===== 教材管理折叠区 ===== -->
+  <!-- ===== 心理功能入口 ===== -->
   <view class="section">
     <view class="section-header">
-      <text class="section-title">📚 教材管理</text>
-      <text class="add-btn" bindtap="onManageBooks">{{manageMode ? '完成' : '管理'}}</text>
+      <text class="section-title">🌟 心理成长</text>
+      <text class="section-more" bindtap="onPsychCardTap" data-card="{id: 'more'}">更多</text>
     </view>
-
-    <!-- 管理模式：分组展示 -->
-    <view wx:if="{{manageMode}}">
-      <view class="group-item" wx:for="{{bookGroups}}" wx:key="subject">
-        <view class="group-header" bindtap="onToggleGroup" data-sub="{{item.subject}}">
-          <text class="group-name">{{item.subject}}</text>
-          <text class="group-count">{{item.books.length}}本</text>
-        </view>
-        <view class="group-books" wx:if="{{item.open}}">
-          <view class="book-row" wx:for="{{item.books}}" wx:key="id">
-            <text class="book-name">{{item.grade}}·{{item.pub}}</text>
-            <text class="book-del-btn" bindtap="onDelMyBook" data-id="{{item.id}}">删除</text>
-          </view>
-        </view>
+    
+    <view class="psych-grid">
+      <view 
+        class="psych-card" 
+        wx:for="{{psychCards}}" 
+        wx:key="id"
+        bindtap="onPsychCardTap" 
+        data-card="{{item}}"
+        style="background: {{item.bgColor}}"
+      >
+        <text class="card-icon">{{item.icon}}</text>
+        <text class="card-title">{{item.title}}</text>
+        <text class="card-desc">{{item.desc}}</text>
+        <view class="card-tag" wx:if="{{item.tag}}">{{item.tag}}</view>
       </view>
-      <view class="empty-tip" wx:if="{{bookGroups.length === 0}}">还没有添加教材</view>
-    </view>
-
-    <!-- 正常模式：筛选 + 添加 -->
-    <view wx:else>
-      <view class="filter-row">
-        <picker class="filter-pick" mode="selector" range="{{subjectList}}" value="{{selSubject}}" bindchange="onSubjectChange">
-          {{subjectList[selSubject]}}
-        </picker>
-        <picker class="filter-pick" mode="selector" range="{{gradeList}}" value="{{selGrade}}" bindchange="onGradeChange">
-          {{gradeList[selGrade]}}
-        </picker>
-        <picker class="filter-pick" mode="selector" range="{{pubList}}" value="{{selPub}}" bindchange="onPubChange">
-          {{pubList[selPub]}}
-        </picker>
-        <view class="confirm-btn" bindtap="onConfirmFilter">
-          <text>搜索</text>
-        </view>
-      </view>
-
-      <!-- 搜索结果 -->
-      <view class="book-result" wx:if="{{showResult}}">
-        <view class="result-tip">找到 {{filterResult.length}} 本教材</view>
-        <view class="book-row" wx:for="{{filterResult}}" wx:key="id">
-          <view class="book-info">
-            <text class="book-sub">{{item.subject}}</text>
-            <text class="book-grade">{{item.grade}}·{{item.pub}}</text>
-          </view>
-          <text class="book-add-btn {{item.added ? 'added' : ''}}" bindtap="onAddMyBook" data-id="{{item.id}}">
-            {{item.added ? '✓已添加' : '+ 添加'}}
-          </text>
-        </view>
-        <view class="empty-tip" wx:if="{{filterResult.length === 0}}">该条件下暂无教材</view>
-      </view>
-
-      <!-- 已添加列表 -->
-      <view class="my-books-list" wx:if="{{!showResult && myBooks.length > 0}}">
-        <view class="book-row" wx:for="{{myBooks}}" wx:key="id">
-          <view class="book-info">
-            <text class="book-sub">{{item.subject}}</text>
-            <text class="book-grade">{{item.grade}}·{{item.pub}}</text>
-          </view>
-          <text class="grade-query-btn" bindtap="onQueryGrade" data-book="{{item}}">查成绩</text>
-        </view>
-      </view>
-      <view class="empty-tip" wx:if="{{!showResult && myBooks.length === 0}}">还没有添加教材，去搜索添加吧</view>
     </view>
   </view>
 
-  <view style="height:40rpx"></view>
+  <!-- ===== 本周心理趋势 ===== -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">📈 本周心理趋势</text>
+      <text class="section-more" bindtap="showWeeklyReport">查看详情</text>
+    </view>
+    
+    <view class="week-trend-card">
+      <view class="trend-main">
+        <view class="trend-score">
+          <text class="score-num">{{reportData.averageScore}}</text>
+          <text class="score-unit">分</text>
+        </view>
+        <view class="trend-info">
+          <text class="trend-label">本周平均分</text>
+          <view class="trend-badge {{reportData.trend}}">
+            <text wx:if="{{reportData.trend === 'up'}}">↑ 上升中</text>
+            <text wx:elif="{{reportData.trend === 'down'}}">↓ 下降</text>
+            <text wx:else>→ 平稳</text>
+          </view>
+        </view>
+      </view>
+      
+      <canvas type="2d" id="weekChart" class="week-chart"></canvas>
+      
+      <view class="trend-suggestions">
+        <text class="suggestions-title">💡 建议</text>
+        <view class="suggestion-item" wx:for="{{reportData.suggestions}}" wx:key="index">
+          <text>{{index + 1}}. {{item}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 心理知识推荐 ===== -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">📚 心理知识</text>
+      <text class="section-more" bindtap="showKnowledgeList">查看更多</text>
+    </view>
+    
+    <view class="knowledge-list">
+      <view 
+        class="knowledge-item" 
+        wx:for="{{knowledgeList}}" 
+        wx:key="id"
+        bindtap="onKnowledgeTap" 
+        data-item="{{item}}"
+      >
+        <view class="knowledge-content">
+          <view class="knowledge-header">
+            <text class="knowledge-category">{{item.category}}</text>
+            <view class="knowledge-new" wx:if="{{item.isNew}}">新</view>
+          </view>
+          <text class="knowledge-title">{{item.title}}</text>
+          <text class="knowledge-summary">{{item.summary}}</text>
+          <text class="knowledge-time">阅读 {{item.readTime}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 紧急求助入口 ===== -->
+  <view class="crisis-banner" bindtap="onCrisisHelp">
+    <text class="crisis-icon">🆘</text>
+    <view class="crisis-info">
+      <text class="crisis-title">需要帮助？</text>
+      <text class="crisis-desc">如果你感到心理困扰，请告诉我们或寻求专业帮助</text>
+    </view>
+    <text class="crisis-arrow">›</text>
+  </view>
+
+  <view style="height: 40rpx"></view>
+
+  <!-- ===== 情绪打卡弹窗 ===== -->
+  <view class="modal {{showMoodPicker ? 'show' : ''}}" wx:if="{{showMoodPicker}}">
+    <view class="modal-mask" bindtap="closeMoodPicker"></view>
+    <view class="modal-content mood-picker">
+      <view class="modal-header">
+        <text class="modal-title">今日心情怎么样？ 🌸</text>
+        <text class="modal-close" bindtap="closeMoodPicker">×</text>
+      </view>
+      
+      <view class="mood-options">
+        <view 
+          class="mood-option" 
+          wx:for="{{[1, 2, 3, 4, 5]}}" 
+          wx:key="index"
+          bindtap="onMoodSelect" 
+          data-value="{{item}}"
+        >
+          <text class="mood-emoji">
+            {{item === 1 ? '😢' : item === 2 ? '😔' : item === 3 ? '😐' : item === 4 ? '😊' : '🥰'}}
+          </text>
+          <text class="mood-text">
+            {{item === 1 ? '很差' : item === 2 ? '不太好' : item === 3 ? '一般' : item === 4 ? '还不错' : '很棒'}}
+          </text>
+        </view>
+      </view>
+      
+      <view class="mood-hint">
+        <text>每天记录心情，帮助你更好地了解自己 💙</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 知识详情弹窗 ===== -->
+  <view class="modal {{showKnowledgeModal ? 'show' : ''}}" wx:if="{{showKnowledgeModal}}">
+    <view class="modal-mask" bindtap="closeKnowledgeModal"></view>
+    <view class="modal-content knowledge-modal">
+      <view class="modal-header">
+        <text class="modal-title">{{selectedKnowledge.title}}</text>
+        <text class="modal-close" bindtap="closeKnowledgeModal">×</text>
+      </view>
+      
+      <view class="knowledge-detail">
+        <view class="detail-meta">
+          <text class="detail-category">{{selectedKnowledge.category}}</text>
+          <text class="detail-time">阅读 {{selectedKnowledge.readTime}}</text>
+        </view>
+        <text class="detail-summary">{{selectedKnowledge.summary}}</text>
+      </view>
+      
+      <view class="modal-actions">
+        <button class="action-btn primary" bindtap="readKnowledge">阅读全文</button>
+      </view>
+    </view>
+  </view>
+
   <tab-bar />
 </view>

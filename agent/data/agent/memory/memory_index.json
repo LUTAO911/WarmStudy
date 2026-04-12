@@ -32,5 +32,62 @@
       "skill_calls": 0,
       "react_steps": 0
     }
+  },
+  {
+    "id": "6b034babaccc",
+    "role": "assistant",
+    "content": "我能理解你现在的紧张和担心，这种感觉确实让人不舒服... 🌸 \n\n考试焦虑是青少年常见的心理困扰。CBT认为，焦虑来自于对考试的负面认知。\n\n试试这个方法：\n1. 识别负面想法：如\"我一定会考砸\"\n2. 挑战这些想法：问自己\"有什么证据支持这个想法？\"\n3. 建立更平衡的认知：如\"我准备得不错，尽力就好\"\n\n另外，深呼吸（4-7-8呼吸法）也很有效：吸气4秒，屏住呼吸7秒，呼气8秒。\n\n深呼吸，我们一起想想办法。",
+    "timestamp": 1775955530.1513152,
+    "metadata": {
+      "session_id": "default",
+      "mode": "psychology",
+      "tool_calls": 2
+    }
+  },
+  {
+    "id": "3dfc7e4a5e3b",
+    "role": "assistant",
+    "content": "我能理解你现在的紧张和担心，这种感觉确实让人不舒服... 🌸 \n\n考试焦虑是青少年常见的心理困扰。CBT认为，焦虑来自于对考试的负面认知。\n\n试试这个方法：\n1. 识别负面想法：如\"我一定会考砸\"\n2. 挑战这些想法：问自己\"有什么证据支持这个想法？\"\n3. 建立更平衡的认知：如\"我准备得不错，尽力就好\"\n\n另外，深呼吸（4-7-8呼吸法）也很有效：吸气4秒，屏住呼吸7秒，呼气8秒。\n\n能说说具体是什么事情让你担心吗？",
+    "timestamp": 1775955535.1224694,
+    "metadata": {
+      "session_id": "default",
+      "mode": "psychology",
+      "tool_calls": 2
+    }
+  },
+  {
+    "id": "e222521a5344",
+    "role": "assistant",
+    "content": "我想认真告诉你：你很重要，你的生命有意义。\n\n我知道你现在可能感到很痛苦，但请相信，总有办法度过难关。\n你能不能告诉我你现在在哪里？我们一起想办法。如果你有立即的危险，请拨打120或联系你身边的人。\n\n全国心理援助热线：400-161-9995\n\n你也可以告诉我你所在的地区，我帮你找到更近的帮助资源。💙",
+    "timestamp": 1775955541.2521753,
+    "metadata": {
+      "session_id": "default",
+      "mode": "psychology",
+      "tool_calls": 2
+    }
+  },
+  {
+    "id": "a9692061802a",
+    "role": "assistant",
+    "content": "Error: MiniMax API unauthorized - check API key",
+    "timestamp": 1775955550.4359663,
+    "metadata": {
+      "session_id": "default",
+      "tool_calls": 0,
+      "skill_calls": 0,
+      "react_steps": 5
+    }
+  },
+  {
+    "id": "6fe25f23896c",
+    "role": "assistant",
+    "content": "你好！👋\n\n欢迎来到**暖学帮**（Warm Learning Helper）学习平台！\n\n我是你的智能学习助手，可以帮助你：\n\n- 📚 **解答学习问题** - 各学科的知识讲解与答疑\n- 📖 **辅导作业** - 帮你理解题目、分析难点\n- 💡 **提供学习方法** - 分享高效的学习技巧和策略\n- 🔍 **资料查询** - 查找相关学习资料和知识点\n\n今天有什么我可以帮助你的吗？无论是学习上的疑问，还是需要学习规划建议，都可以告诉我哦！😊",
+    "timestamp": 1775957393.2077043,
+    "metadata": {
+      "session_id": "default",
+      "tool_calls": 0,
+      "skill_calls": 0,
+      "react_steps": 0
+    }
   }
 ]

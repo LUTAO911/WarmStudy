@@ -1,0 +1,32 @@
+# Environment
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Data (don't commit local data)
+data/agent/memory/*.json
+data/cache/
+data/logs/
+data/chroma/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

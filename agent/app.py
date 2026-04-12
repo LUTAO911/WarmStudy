@@ -41,10 +41,67 @@ except Exception as e:
     AGENT_ENABLED = False
     agent_bp = None
 
+# 注册 v5 API 蓝图（新架构）
+try:
+    from agent.api.routes_v5 import v5_bp
+    app.register_blueprint(v5_bp)
+    print("[Agent] v5 API blueprint registered")
+except Exception as e:
+    print(f"[Agent] Failed to load v5 routes: {e}")
+
+# 注册错误处理器
+try:
+    from agent.api.errors import register_error_handlers
+    register_error_handlers(app)
+    print("[Agent] Error handlers registered")
+except Exception as e:
+    print(f"[Agent] Failed to register error handlers: {e}")
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/api/docs")
+def api_docs():
+    """OpenAPI 文档端点"""
+    try:
+        from agent.api.docs import get_openapi_spec
+        return jsonify(get_openapi_spec())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/docs/ui")
+def api_docs_ui():
+    """Swagger UI 入口"""
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>暖学帮 API 文档</title>
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+        <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+        <script>
+            window.onload = function() {
+                SwaggerUIBundle({{
+                    url: "/api/docs",
+                    dom_id: '#swagger-ui',
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIBundle.SwaggerUIStandalonePreset
+                    ],
+                    layout: "BaseLayout"
+                }})
+            }
+        </script>
+    </body>
+    </html>
+    '''
 
 
 @app.route("/api/status")
@@ -300,13 +357,15 @@ Answer based on the context above:"""
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-def generate_chat_response(prompt: str, model: str = "minimax") -> str:
+def generate_chat_response(prompt: str, model: str = None) -> str:
     chat_model = os.getenv("CHAT_MODEL", "minimax")
 
     if chat_model == "minimax":
         return call_minimax_api(prompt)
     else:
-        return call_dashscope_api(prompt, model)
+        # DashScope/Qwen 默认使用 qwen-max
+        qwen_model = os.getenv("DASHSCOPE_MODEL", "qwen-max")
+        return call_dashscope_api(prompt, qwen_model)
 
 
 def call_minimax_api(prompt: str) -> str:
@@ -466,6 +525,309 @@ def api_index_info():
 @app.route("/static/<path:filename>")
 def static_files(filename):
     return send_from_directory("static", filename)
+
+
+@app.route("/psychology-test")
+def psychology_test():
+    """
+    心理支持测试页面
+    """
+    return render_template("psychology_test.html")
+
+
+# ===== 学生端心理陪伴 API =====
+
+
+@app.route("/api/student/chat", methods=["POST"])
+def api_student_chat():
+    """
+    学生端心理陪伴对话 - 接入Qwen LLM
+    POST /api/student/chat
+    """
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id", "")
+        message = data.get("message", "").strip()
+
+        if not message:
+            return jsonify({"success": False, "error": "Message is required"}), 400
+
+        # 1. 危机检测（规则，快速）
+        from agent.tools.psychology import get_psychology_tools
+        pt = get_psychology_tools()
+        crisis_result = pt.check_crisis(message)
+        crisis_level = crisis_result.get("level", "safe")
+
+        # 2. 情绪识别
+        emotion_result = pt.detect_emotion(message)
+        emotion_label = emotion_result.get("emotion", "neutral")
+        emotion_desc = emotion_result.get("description", "")
+
+        # 3. 危机情况：返回干预响应（规则）
+        if crisis_level in ("medium", "high", "critical"):
+            from agent.modules.psychology.crisis import CrisisResult, CrisisLevel
+            crisis_obj = CrisisResult(
+                level=CrisisLevel(crisis_level),
+                signals=crisis_result.get("signals", []),
+                message=crisis_result.get("message", ""),
+                action=crisis_result.get("action", ""),
+                hotlines=crisis_result.get("hotlines", [])
+            )
+            intervention = pt._crisis_detector.get_response(crisis_obj)
+            return jsonify({
+                "success": True,
+                "response": intervention,
+                "ai_name": "暖暖",
+                "emotion": emotion_label,
+                "crisis_level": crisis_level,
+                "type": "crisis_intervention"
+            })
+
+        # 4. 正常心理陪伴：用Qwen LLM生成共情回复
+        knowledge_result = pt.search_psychology_knowledge(
+            query=message,
+            user_type="student",
+            n_results=3
+        )
+
+        # 构建知识上下文
+        knowledge_text = ""
+        if knowledge_result and knowledge_result.get("results"):
+            for r in knowledge_result["results"]:
+                knowledge_text += f"- {r.get('content', '')}\n"
+
+        # 构建LLM提示词
+        if knowledge_text:
+            llm_prompt = f"""你是一位温暖、专业的青少年心理陪伴助手"暖暖"。请根据以下信息，用温暖共情的语气回复学生。
+
+学生的话：{message}
+
+检测到的情绪：{emotion_label}（{emotion_desc}）
+
+相关心理知识：
+{knowledge_text}
+
+请结合心理知识，用温暖、理解的语气回复（100-200字），体现共情和关心。如果适合，给出一些积极的建议。
+
+回复："""
+        else:
+            llm_prompt = f"""你是一位温暖、专业的青少年心理陪伴助手"暖暖"。请用温暖共情的语气回复学生。
+
+学生的话：{message}
+
+检测到的情绪：{emotion_label}（{emotion_desc}）
+
+请用温暖、理解的语气回复（100-200字），体现共情和关心。如果适合，给出一些积极的建议。
+
+回复："""
+
+        # 调用LLM生成回复（根据CHAT_MODEL自动选择minimax或qwen）
+        llm_response = generate_chat_response(llm_prompt)
+
+        return jsonify({
+            "success": True,
+            "response": llm_response,
+            "ai_name": "暖暖",
+            "emotion": emotion_label,
+            "crisis_level": crisis_level,
+            "type": "normal_support"
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/student/checkin", methods=["POST"])
+def api_student_checkin():
+    """
+    学生每日打卡
+    POST /api/student/checkin
+    """
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id", "")
+        emotion = data.get("emotion")
+        sleep = data.get("sleep")
+        study = data.get("study")
+        social = data.get("social")
+        note = data.get("note", "")
+
+        # 这里可以保存到数据库，现在先返回成功
+        return jsonify({
+            "success": True,
+            "message": "打卡成功"
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/student/psych/status/<user_id>", methods=["GET"])
+def api_student_psych_status(user_id):
+    """
+    获取学生心理状态
+    GET /api/student/psych/status/{user_id}
+    """
+    try:
+        # 返回默认心理状态
+        return jsonify({
+            "success": True,
+            "status": {
+                "emotion": "neutral",
+                "emotion_label": "平静",
+                "emotion_icon": "😌",
+                "weekly_trend": ["neutral", "happy", "neutral", "anxious", "neutral"],
+                "risk_level": "low"
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ===== 家长端 API =====
+
+
+@app.route("/api/parent/chat", methods=["POST"])
+def api_parent_chat():
+    """
+    家长端家庭教育助手对话
+    POST /api/parent/chat
+    """
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id", "")
+        message = data.get("message", "").strip()
+
+        if not message:
+            return jsonify({"success": False, "error": "Message is required"}), 400
+
+        # 使用心理学工具处理（家长模式）
+        from agent.tools.psychology import get_psychology_tools
+        pt = get_psychology_tools()
+
+        # 危机检测
+        crisis_result = pt.check_crisis(message)
+        crisis_level = crisis_result.get("level", "safe")
+
+        # 情绪识别
+        emotion_result = pt.detect_emotion(message)
+
+        # 危机情况
+        if crisis_level in ("medium", "high", "critical"):
+            from agent.modules.psychology.crisis import CrisisResult, CrisisLevel
+            crisis_obj = CrisisResult(
+                level=CrisisLevel(crisis_level),
+                signals=crisis_result.get("signals", []),
+                message=crisis_result.get("message", ""),
+                action=crisis_result.get("action", ""),
+                hotlines=crisis_result.get("hotlines", [])
+            )
+            intervention = pt._crisis_detector.get_response(crisis_obj)
+            return jsonify({
+                "success": True,
+                "response": intervention,
+                "ai_name": "暖暖",
+                "type": "crisis_intervention"
+            })
+
+        # 正常对话 - 检索家长相关心理知识
+        knowledge_result = pt.search_psychology_knowledge(
+            query=message,
+            user_type="parent",
+            n_results=3
+        )
+
+        empathic_response = pt.generate_empathic_response(
+            user_input=message,
+            emotion=emotion_result.get("emotion"),
+            context={"knowledge": knowledge_result}
+        )
+
+        return jsonify({
+            "success": True,
+            "response": empathic_response,
+            "ai_name": "暖暖",
+            "type": "normal_support"
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/parent/child/<child_id>/status", methods=["GET"])
+def api_parent_child_status(child_id):
+    """
+    获取孩子综合状态
+    GET /api/parent/child/{child_id}/status
+    """
+    try:
+        return jsonify({
+            "success": True,
+            "status": {
+                "emotion": "neutral",
+                "emotion_label": "平静",
+                "emotion_icon": "😌",
+                "weekly_checkin_count": 5,
+                "last_checkin": "2026-04-11",
+                "risk_level": "low",
+                "trend": "stable"
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/parent/child/<child_id>/checkins", methods=["GET"])
+def api_parent_child_checkins(child_id):
+    """
+    获取孩子打卡记录
+    GET /api/parent/child/{child_id}/checkins?days=7
+    """
+    try:
+        days = request.args.get("days", 7, type=int)
+        # 返回模拟数据
+        return jsonify({
+            "success": True,
+            "checkins": []
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/parent/alerts", methods=["GET"])
+def api_parent_alerts():
+    """
+    获取预警列表
+    GET /api/parent/alerts?parent_id=xxx&limit=20&offset=0
+    """
+    try:
+        return jsonify({
+            "success": True,
+            "alerts": [],
+            "unread_count": 0
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/parent/child/<child_id>/psych/latest", methods=["GET"])
+def api_parent_child_psych_latest(child_id):
+    """
+    获取孩子最新心理状态
+    GET /api/parent/child/{child_id}/psych/latest
+    """
+    try:
+        return jsonify({
+            "success": True,
+            "latest": {
+                "emotion": "neutral",
+                "emotion_label": "平静",
+                "date": "2026-04-11",
+                "risk_level": "low"
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == "__main__":

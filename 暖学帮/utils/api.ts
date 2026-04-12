@@ -86,14 +86,91 @@ export function sendVerifyCode(phone: string): Promise<{
 // ===== 学生端 API =====
 
 /**
- * AI 心理师对话
+ * AI 心理师对话（心理陪伴）
  * POST /api/student/chat
  */
-export function studentChat(userId: string, message: string): Promise<{ success: boolean; response: string; ai_name: string }> {
-  return request<{ success: boolean; response: string; ai_name: string }>(
+export function studentChat(userId: string, message: string): Promise<{
+  success: boolean;
+  response: string;
+  ai_name: string;
+  emotion?: string;
+  crisis_level?: string;
+  type?: string;
+}> {
+  return request<{ success: boolean; response: string; ai_name: string; emotion?: string; crisis_level?: string; type?: string }>(
     '/api/student/chat',
     { user_id: userId, message }
   );
+}
+
+/**
+ * 情绪识别（单独调用）
+ * POST /api/agent/psychology/emotion
+ */
+export function detectEmotion(text: string): Promise<{
+  ok: boolean;
+  emotion: {
+    emotion: string;
+    emotion_label: string;
+    intensity: number;
+    keywords: string[];
+    suggestion: string;
+  };
+}> {
+  return request('/api/agent/psychology/emotion', { text });
+}
+
+/**
+ * 危机检测（单独调用）
+ * POST /api/agent/psychology/crisis
+ */
+export function checkCrisis(text: string): Promise<{
+  ok: boolean;
+  crisis: {
+    level: string;
+    signals: any[];
+    message: string;
+    action: string;
+    hotlines: string[];
+  };
+}> {
+  return request('/api/agent/psychology/crisis', { text });
+}
+
+/**
+ * 心理知识检索
+ * GET /api/agent/psychology/knowledge?q=xxx&user_type=student&n=5
+ */
+export function searchPsychologyKnowledge(
+  query: string,
+  userType: string = 'student',
+  n: number = 5
+): Promise<{
+  ok: boolean;
+  query: string;
+  user_type: string;
+  count: number;
+  results: {
+    id: string;
+    title: string;
+    category: string;
+    content: string;
+    keywords: string[];
+  }[];
+}> {
+  return request(`/api/agent/psychology/knowledge?q=${encodeURIComponent(query)}&user_type=${userType}&n=${n}`, undefined, 'GET');
+}
+
+/**
+ * 获取心理知识分类
+ * GET /api/agent/psychology/categories?user_type=student
+ */
+export function getPsychologyCategories(userType: string = 'student'): Promise<{
+  ok: boolean;
+  categories: string[];
+  user_type: string;
+}> {
+  return request(`/api/agent/psychology/categories?user_type=${userType}`, undefined, 'GET');
 }
 
 /**

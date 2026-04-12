@@ -4,6 +4,7 @@
     "pages/student/assessment/assessment",
     "pages/student/chat/chat",
     "pages/student/library/library",
+    "pages/student/library/knowledge/knowledge",
     "pages/parent/home/home",
     "pages/parent/ai-chat/ai-chat",
     "pages/parent/settings/settings",
