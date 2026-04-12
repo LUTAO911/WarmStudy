@@ -12,7 +12,7 @@ import asyncio
 from functools import partial
 
 from .auth import require_auth, get_auth_manager
-from agent.core.agent import Agent, AgentConfig, AgentManager
+from agent.core.agent import Agent, AgentConfig, AgentManager, AgentMode
 from agent.memory import MemoryManager
 from agent.tool_registry import ToolRegistry, setup_builtin_tools
 from agent.context import ContextManager

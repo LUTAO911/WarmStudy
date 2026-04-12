@@ -18,6 +18,9 @@ from agent.tool_registry import ToolRegistry, ToolResult, setup_builtin_tools
 from agent.context import ContextManager
 from agent.skills import SkillRegistry, SkillResult, setup_builtin_skills
 from agent.prompts import PromptManager, DynamicPromptBuilder
+from redis_client import get_redis
+from agent.core.router import Router, RouteDecision
+from agent.core.executor import Executor
 
 
 class AgentMode(Enum):
@@ -177,8 +180,13 @@ class Agent:
         self.prompts: PromptManager = prompt_manager or PromptManager()
         self.prompt_builder: DynamicPromptBuilder = DynamicPromptBuilder(self.prompts)
         self._lock: threading.RLock = threading.RLock()
+        self._query_cache: Dict[str, str] = {}
+        self._cache_lock: threading.RLock = threading.RLock()
         self._response_cache: ResponseCache = ResponseCache(ttl_seconds=300, max_size=2000)
         self._use_qwen_judge: bool = True
+        self._router = Router()
+        self._executor = Executor()
+        self._evaluator = Evaluator()
         self._setup_components()
 
     def _setup_components(self) -> None:
@@ -668,7 +676,8 @@ class Agent:
                          n_results: int = 5,
                          use_hybrid: bool = True,
                          rerank: bool = True) -> List[Dict[str, Any]]:
-        """知识库检索"""
+        """知识库检索（带缓存，避免同一 query 重复检索）"""
+        cache_key = f"{query}:{n_results}:{use_hybrid}:{rerank}"
         try:
             if use_hybrid:
                 from vectorstore import query_with_hybrid_search
@@ -693,6 +702,12 @@ class Agent:
                         "page": meta.get("page", ""),
                         "similarity": round(1 - dist, 4),
                     })
+
+            with self._cache_lock:
+                self._query_cache[cache_key] = "1"
+                if len(self._query_cache) > 500:
+                    for k in list(self._query_cache.keys())[:100]:
+                        del self._query_cache[k]
             return results
         except Exception:
             return []
@@ -892,6 +907,39 @@ class Agent:
         self.memory.clear_short_term()
         self.context.clear_session(sid)
         return True
+
+
+
+class Evaluator:
+    """
+    评审器：用 Qwen-Turbo 做质量评估，便宜快
+    """
+    def __init__(self):
+        self._redis = get_redis()
+
+    def reflect(self, answer, message, context_results):
+        ctx = "\n".join([
+            "[%d] %s" % (i+1, d.get("content", "")[:300])
+            for i, d in enumerate(context_results[:3])
+        ])
+        try:
+            from openai import OpenAI
+            import os
+            client = OpenAI(
+                api_key=os.getenv("DASHSCOPE_API_KEY", ""),
+                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+            )
+            resp = client.chat.completions.create(
+                model="qwen-turbo",
+                messages=[{"role": "user", "content":
+                    "\u7528\u6237\u95ee\u9898: %s\n\u53c2\u8003: %s\n\u8bf7\u7ed9\u51fa\u66f4\u5b8c\u6574\u7684\u56de\u7b54:" % (message, ctx[:500])}],
+                max_tokens=512,
+                temperature=0.1,
+            )
+            improved = resp.choices[0].message.content or ""
+            return (improved if improved else answer, improved != "")
+        except Exception:
+            return (answer, True)
 
 
 class AgentManager:

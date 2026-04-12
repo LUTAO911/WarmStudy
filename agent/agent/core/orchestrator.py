@@ -3,6 +3,7 @@ Orchestrator - 主编排引擎
 Agent 核心调度器，协调所有子模块处理用户请求
 """
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from enum import Enum
@@ -53,14 +54,6 @@ class EmotionInfo:
     icon: str = "😌"
     keywords: List[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "emotion": self.emotion,
-            "intensity": self.intensity,
-            "icon": self.icon,
-            "keywords": self.keywords,
-        }
-
 @dataclass
 class AgentResponse:
     """智能体响应"""
@@ -77,7 +70,11 @@ class AgentResponse:
         return {
             "answer": self.content,
             "mode": self.mode.value,
-            "emotion": self.emotion.to_dict() if self.emotion else None,
+            "emotion": {
+                "emotion": self.emotion.emotion if self.emotion else None,
+                "intensity": self.emotion.intensity if self.emotion else None,
+                "icon": self.emotion.icon if self.emotion else None,
+            } if self.emotion else None,
             "crisis_level": self.crisis_level,
             "sources": self.sources,
             "tool_results": self.tool_results,
@@ -88,15 +85,19 @@ class AgentResponse:
 class Orchestrator:
     """
     主编排器
-
+    
+    职责：
+    1. 接收用户消息，协调各模块处理
+    2. 管理对话生命周期
+    3. 构建最终响应
+    
     工作流程：
-    1. 确定对话模式（危机/心理/普通）
-    2. 心理模式处理（如需要）
-    3. RAG 检索（如需要）
-    4. 工具调用（如需要）
-    5. LLM 生成响应
-    6. 反思机制
-    7. 更新记忆
+    1. 意图路由 - 确定对话模式
+    2. 并行执行 - 记忆读取、RAG检索、工具调用
+    3. 心理学处理（如需要）
+    4. LLM生成响应
+    5. 反思机制
+    6. 更新记忆
     """
 
     # 心理学关键词
@@ -129,6 +130,9 @@ class Orchestrator:
         self.context = context_manager
         self.tools = tool_registry
         self.psychology = psychology_module
+        
+        self._response_cache: Dict[str, tuple] = {}
+        self._cache_ttl = 300
 
     def _is_psychology_message(self, message: str) -> bool:
         """检测消息是否与心理学相关"""
@@ -148,14 +152,25 @@ class Orchestrator:
             return ConversationMode.PSYCHOLOGY
         return ConversationMode.CHAT
 
-    def chat(
+    async def chat(
         self,
         message: str,
         session_id: str = "default",
         user_id: Optional[str] = None,
         user_type: str = "student",
     ) -> AgentResponse:
-        """处理对话请求，返回智能体响应"""
+        """
+        处理对话请求
+        
+        Args:
+            message: 用户消息
+            session_id: 会话ID
+            user_id: 用户ID
+            user_type: 用户类型
+            
+        Returns:
+            AgentResponse: 智能体响应
+        """
         start_time = time.time()
         sid = session_id or "default"
 
@@ -172,12 +187,12 @@ class Orchestrator:
         tool_results = []
 
         if mode in (ConversationMode.PSYCHOLOGY, ConversationMode.CRISIS):
-            psych_result = self._handle_psychology_mode(message, sid, user_type)
+            psych_result = await self._handle_psychology_mode(message, sid, user_type)
             emotion_info = psych_result.get("emotion")
             crisis_level = psych_result.get("crisis_level")
             tool_results = psych_result.get("tool_results", [])
 
-            # 危机模式直接返回
+            # 如果是危机模式，直接返回
             if mode == ConversationMode.CRISIS:
                 crisis_response = psych_result.get("response", "")
                 if self.memory:
@@ -191,14 +206,14 @@ class Orchestrator:
                     execution_time=time.time() - start_time
                 )
 
-        # 3. RAG 检索
+        # 3. RAG 检索（如需要）
         context_results = []
         if self.config.enable_rag:
-            context_results = self._retrieve_context(message, sid)
+            context_results = await self._retrieve_context(message, sid)
 
-        # 4. 工具调用
+        # 4. 工具调用（如需要）
         if self.config.enable_tools:
-            tool_results.extend(self._execute_tools(message))
+            tool_results.extend(await self._execute_tools(message))
 
         # 5. 构建 Prompt 并生成响应
         prompt = self._build_prompt(
@@ -208,11 +223,12 @@ class Orchestrator:
             tool_results=tool_results,
             mode=mode
         )
-        answer = self._generate_response(prompt)
+
+        answer = await self._generate_response(prompt)
 
         # 6. 反思机制
         if self.config.enable_reflection and context_results:
-            answer = self._reflect(answer, message, context_results)
+            answer = await self._reflect(answer, message, context_results, sid)
 
         # 7. 更新记忆
         if self.memory:
@@ -223,14 +239,14 @@ class Orchestrator:
             })
 
         # 8. 构建来源信息
-        sources = [
-            {
-                "content": doc.get("content", "")[:150] + "...",
-                "source": doc.get("source", ""),
-                "similarity": doc.get("similarity", 0),
-            }
-            for doc in context_results[:3]
-        ]
+        sources = []
+        if context_results:
+            for doc in context_results[:3]:
+                sources.append({
+                    "content": doc.get("content", "")[:150] + "...",
+                    "source": doc.get("source", ""),
+                    "similarity": doc.get("similarity", 0),
+                })
 
         return AgentResponse(
             content=answer,
@@ -247,20 +263,48 @@ class Orchestrator:
             execution_time=time.time() - start_time
         )
 
-    def _handle_psychology_mode(
+    async def _handle_psychology_mode(
         self,
         message: str,
         sid: str,
         user_type: str
     ) -> Dict[str, Any]:
         """处理心理学模式"""
-        result: Dict[str, Any] = {
+        result = {
             "emotion": None,
             "crisis_level": None,
             "response": "",
             "tool_results": []
         }
 
+        # 使用 psychology 模块
+        if self.psychology:
+            try:
+                psych_result = await self.psychology.process(
+                    user_input=message,
+                    user_type=user_type,
+                    context={}
+                )
+                
+                if psych_result.emotion:
+                    result["emotion"] = EmotionInfo(
+                        emotion=psych_result.emotion.type,
+                        intensity=psych_result.emotion.intensity,
+                        icon=psych_result.emotion.icon,
+                        keywords=psych_result.emotion.keywords
+                    )
+                
+                if psych_result.crisis:
+                    result["crisis_level"] = psych_result.crisis.level
+                
+                if psych_result.empathic_response:
+                    result["response"] = psych_result.empathic_response
+                    return result
+                    
+            except Exception:
+                pass
+
+        # 兜底：使用内置的情绪检测
         from agent.modules.psychology.emotion import EmotionDetector
         from agent.modules.psychology.crisis import CrisisDetector
 
@@ -279,22 +323,33 @@ class Orchestrator:
         result["crisis_level"] = crisis_result.level.value
 
         # 生成共情回复
-        result["response"] = self._generate_empathic_response(
+        empathic_response = self._generate_empathic_response(
             message, emotion_result, crisis_result
         )
+        result["response"] = empathic_response
+
         return result
 
-    def _generate_empathic_response(self, message: str, emotion_result: Any, crisis_result: Any) -> str:
+    def _generate_empathic_response(
+        self,
+        message: str,
+        emotion_result,
+        crisis_result
+    ) -> str:
         """生成共情回复"""
         from agent.modules.psychology.empathic import EmpathicGenerator
+        
         generator = EmpathicGenerator()
+        
         try:
-            return generator.generate(
+            response = generator.generate(
                 user_input=message,
                 emotion_type=emotion_result.emotion.value,
                 intensity=emotion_result.intensity
             )
+            return response
         except Exception:
+            # 兜底回复
             emotion_map = {
                 "sad": "我听到你说的话，能感受到你现在很难过...",
                 "anxious": "我能理解你现在的焦虑和压力...",
@@ -304,26 +359,37 @@ class Orchestrator:
             }
             return emotion_map.get(emotion_result.emotion.value, "我在这里认真倾听...")
 
-    def _retrieve_context(self, query: str, sid: str, n_results: int = 5) -> List[Dict[str, Any]]:
+    async def _retrieve_context(
+        self,
+        query: str,
+        sid: str,
+        n_results: int = 5
+    ) -> List[Dict[str, Any]]:
         """检索知识库上下文"""
         try:
             from vectorstore import query_with_hybrid_search
-            return query_with_hybrid_search(query_text=query, n_results=n_results, rerank=True)
+            results = query_with_hybrid_search(
+                query_text=query,
+                n_results=n_results,
+                rerank=True
+            )
+            return results
         except Exception:
             return []
 
-    def _execute_tools(self, message: str) -> List[Dict[str, Any]]:
+    async def _execute_tools(self, message: str) -> List[Dict[str, Any]]:
         """执行匹配的工具"""
-        if not self.tools:
-            return []
-
         results = []
+        if not self.tools:
+            return results
+
         msg_lower = message.lower()
         tool_map = {
             "get_current_time": ["时间", "现在", "几点", "日期"],
             "calculate": ["计算", "等于"],
             "search_web": ["搜索", "查一下"],
         }
+
         for tool_name, keywords in tool_map.items():
             if any(k in msg_lower for k in keywords):
                 try:
@@ -336,6 +402,7 @@ class Orchestrator:
                         })
                 except Exception:
                     pass
+
         return results
 
     def _build_prompt(
@@ -353,10 +420,9 @@ class Orchestrator:
 
         ctx = ""
         if context_results:
-            parts = [
-                f"[知识库 {i+1}]\n{doc.get('content', '')[:500]}"
-                for i, doc in enumerate(context_results[:3])
-            ]
+            parts = []
+            for i, doc in enumerate(context_results[:3]):
+                parts.append(f"[知识库 {i+1}]\n{doc.get('content', '')[:500]}")
             ctx = "\n\n".join(parts)
 
         if tool_results:
@@ -366,6 +432,7 @@ class Orchestrator:
             ])
 
         system_prompt = self._get_system_prompt(mode)
+
         return (
             f"{system_prompt}\n\n"
             f"Conversation History:\n{history or 'No previous messages'}\n\n"
@@ -376,6 +443,7 @@ class Orchestrator:
     def _get_system_prompt(self, mode: ConversationMode) -> str:
         """获取系统提示词"""
         base = "你是暖学帮智能助手，专注于青少年心理关怀和教育辅导。"
+
         if mode == ConversationMode.PSYCHOLOGY:
             return base + """
 重要：你正在心理关怀模式。请：
@@ -393,20 +461,21 @@ class Orchestrator:
 """
         return base
 
-    def _generate_response(self, prompt: str) -> str:
+    async def _generate_response(self, prompt: str) -> str:
         """生成响应"""
         try:
             import os
             chat_model = os.getenv("CHAT_MODEL", "minimax")
             api_key = os.getenv("MINIMAX_API_KEY") or os.getenv("DASHSCOPE_API_KEY", "")
+
             if chat_model == "minimax":
-                return self._generate_minimax(prompt, api_key)
+                return await self._generate_minimax(prompt, api_key)
             else:
-                return self._generate_dashscope(prompt, api_key)
+                return await self._generate_dashscope(prompt, api_key)
         except Exception as e:
             return f"生成响应时出错: {str(e)}"
 
-    def _generate_minimax(self, prompt: str, api_key: str) -> str:
+    async def _generate_minimax(self, prompt: str, api_key: str) -> str:
         """MiniMax API 调用"""
         import requests
         import json
@@ -423,6 +492,7 @@ class Orchestrator:
             "temperature": self.config.temperature,
             "messages": [{"role": "user", "content": prompt}]
         }
+
         resp = requests.post(url, headers=headers, json=data, timeout=60)
         if resp.status_code == 200:
             result = resp.json()
@@ -435,9 +505,10 @@ class Orchestrator:
         else:
             return f"Error: {resp.status_code}"
 
-    def _generate_dashscope(self, prompt: str, api_key: str) -> str:
+    async def _generate_dashscope(self, prompt: str, api_key: str) -> str:
         """DashScope API 调用"""
         from openai import OpenAI
+
         client = OpenAI(
             api_key=api_key,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -450,27 +521,37 @@ class Orchestrator:
         )
         return resp.choices[0].message.content or ""
 
-    def _reflect(self, answer: str, message: str, context_results: List[Dict[str, Any]]) -> str:
-        """反思机制：评估回答质量，必要时改进"""
+    async def _reflect(
+        self,
+        answer: str,
+        message: str,
+        context_results: List[Dict[str, Any]],
+        sid: str
+    ) -> str:
+        """反思机制"""
         ctx_text = "\n".join([
             f"[{i+1}] {d.get('content', '')[:300]}"
             for i, d in enumerate(context_results[:3])
         ])
+
         prompt = (
             f"评估以下回答质量（0.0-1.0）：\n\n"
             f"用户问题: {message}\n\n"
             f"知识库内容:\n{ctx_text}\n\n"
             f"当前回答:\n{answer}\n\n"
+            f"评分标准：是否引用了知识库内容？是否解决了问题？\n"
             f"如果评分>=0.7，回答：合格\n"
             f"如果评分<0.7，回答：不合格 + 改进建议"
         )
+
         try:
-            review = self._generate_response(prompt)
+            review = await self._generate_response(prompt)
             if "合格" in review:
                 return answer
-            return self._generate_response(
+            # 尝试改进
+            improved = await self._generate_response(
                 f"基于以下知识库内容，给出更好的回答：\n{ctx_text}\n\n问题：{message}"
             )
+            return improved
         except Exception:
             return answer
-

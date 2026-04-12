@@ -7,6 +7,7 @@ import uuid
 from typing import Optional, Dict, Any
 from flask import Blueprint, request, jsonify
 from datetime import datetime
+import asyncio
 
 from .auth import require_auth
 from .schemas import (
@@ -108,14 +109,23 @@ def chat():
                 "request_id": request_id
             }), 400
 
-        # 使用 Orchestrator 处理（同步调用）
+        # 使用 Orchestrator 处理
         orchestrator = get_orchestrator()
-        response = orchestrator.chat(
-            message=message,
-            session_id=session_id,
-            user_id=user_id,
-            user_type=user_type,
-        )
+
+        # 同步调用 async 方法
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            response = loop.run_until_complete(
+                orchestrator.chat(
+                    message=message,
+                    session_id=session_id,
+                    user_id=user_id,
+                    user_type=user_type,
+                )
+            )
+        finally:
+            loop.close()
 
         execution_time = time.time() - start_time
 
@@ -177,13 +187,20 @@ def route_intent():
         session_id = data.get("session_id", "default")
         user_type = data.get("user_type", "student")
 
+        router = get_orchestrator()
         intent_router = IntentRouter()
-        context = RouteContext(
-            message=message,
-            session_id=session_id,
-            user_type=user_type
-        )
-        intent = intent_router.route(message, context)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            context = RouteContext(
+                message=message,
+                session_id=session_id,
+                user_type=user_type
+            )
+            intent = loop.run_until_complete(intent_router.route(message, context))
+        finally:
+            loop.close()
 
         return jsonify({
             "status": "success",
