@@ -8,6 +8,17 @@ from .tool_selector import (
     select_tools_for_message,
     MatchConfidence,
 )
+from agent.tool_registry import (
+    ToolResult,
+    ToolStatus,
+    ToolParameter,
+    ToolSchema,
+    Tool,
+    ToolRegistry,
+    BuiltinTools,
+    SafeCalculator,
+    setup_builtin_tools,
+)
 
 # 从 tool_registry 重新导出（测试兼容性）
 from ..tool_registry import (
