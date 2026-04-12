@@ -53,10 +53,10 @@ class ContextEntry:
 
 
 class Context:
-    def __init__(self, session_id: Optional[str] = None, max_entries: int = 20) -> None:
+    def __init__(self, session_id: Optional[str] = None) -> None:
         self._entries: List[ContextEntry] = []
         self._lock: threading.RLock = threading.RLock()
-        self.max_entries: int = max_entries
+        self.max_entries: int = 20
         self.session_id: str = session_id or uuid.uuid4().hex[:12]
         self.created_at: float = time.time()
         self.last_updated: float = time.time()

@@ -618,17 +618,6 @@ class PerformanceMonitor:
     ) -> None:
         self._weight_tuner.record_feedback(query, vector_score, bm25_score, user_rating)
 
-    def cleanup_inactive_sessions(self, max_age_seconds: float = 3600.0) -> int:
-        current_time: float = time.time()
-        with self._lock:
-            stale: List[str] = [
-                sid for sid, last_active in self._sessions.items()
-                if current_time - last_active > max_age_seconds
-            ]
-            for sid in stale:
-                del self._sessions[sid]
-        return len(stale)
-
     def get_active_alerts(self, level: Optional[str] = None) -> List[Dict[str, Any]]:
         alert_level = AlertLevel[level.upper()] if level else None
         alerts = self._alert_manager.get_active_alerts(alert_level)

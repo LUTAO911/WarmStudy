@@ -238,11 +238,6 @@ class ShortTermMemory(BaseMemory):
             self._cleanup_expired_locked()
             return self._memory.copy()
 
-    def __len__(self) -> int:
-        with self._lock:
-            self._cleanup_expired_locked()
-            return len(self._memory)
-
     def get_context_string(self, limit: int = 10) -> str:
         recent: List[MemoryEntry] = self.get_recent(limit)
         if not recent:

@@ -13,6 +13,7 @@ from enum import Enum
 from pathlib import Path
 
 
+@dataclass(frozen=True)
 class ToolStatus(Enum):
     SUCCESS = "success"
     ERROR = "error"
@@ -340,7 +341,7 @@ class SafeCalculator:
         try:
             tree = ast.parse(expression, mode="eval")
             result = eval_node(tree.body)
-            return float(result)
+            return float(result) if isinstance(result, float) else result
         except (ValueError, SyntaxError, ZeroDivisionError) as e:
             return f"Error: {str(e)}"
 

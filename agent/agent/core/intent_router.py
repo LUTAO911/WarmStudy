@@ -66,7 +66,7 @@ class IntentRouter:
 
     # 心理学关键词
     PSYCHOLOGY_KEYWORDS = [
-        "情绪", "心情", "难过", "难受", "开心", "生气", "害怕", "焦虑",
+        "情绪", "心情", "难过", "开心", "生气", "害怕", "焦虑",
         "压力", "紧张", "压抑", "沮喪", "失落", "失眠",
         "心理", "心事", "内心", "人际关系", "亲子关系",
         "考试压力", "学习压力", "被孤立", "被欺负",
@@ -119,15 +119,9 @@ class IntentRouter:
         if crisis_intent:
             return crisis_intent
 
-        # 2. 知识查询（优先级高于心理学和教育）
-        knowledge_intent = self._check_knowledge(message)
-        if knowledge_intent.confidence > 0.5:
-            self._cache[cache_key] = knowledge_intent
-            return knowledge_intent
-
         # 3. 心理学检测
         psych_intent = self._check_psychology(message, context)
-        if psych_intent.confidence >= 0.5:
+        if psych_intent.confidence > 0.6:
             self._cache[cache_key] = psych_intent
             return psych_intent
 
@@ -137,7 +131,13 @@ class IntentRouter:
             self._cache[cache_key] = edu_intent
             return edu_intent
 
-        # 5. 默认普通聊天
+        # 5. 知识查询检测
+        knowledge_intent = self._check_knowledge(message)
+        if knowledge_intent.confidence > 0.5:
+            self._cache[cache_key] = knowledge_intent
+            return knowledge_intent
+
+        # 6. 默认普通聊天
         default_intent = Intent(
             primary=IntentType.GENERAL_CHAT,
             confidence=0.5,
@@ -158,7 +158,7 @@ class IntentRouter:
             if kw in msg_lower:
                 # 检查是否有否定词
                 idx = msg_lower.find(kw)
-                prefix = msg_lower[max(0, idx - 20):idx + 1]
+                prefix = msg_lower[max(0, idx - 20):idx]
                 if any(neg in prefix for neg in negations):
                     continue
                 return Intent(
@@ -218,8 +218,8 @@ class IntentRouter:
         keyword_matches = [kw for kw in self.EDUCATION_KEYWORDS if kw in msg_lower]
         keyword_count = len(keyword_matches)
 
-        if keyword_count >= 1:
-            confidence = min(keyword_count / 1.5, 0.9)
+        if keyword_count >= 2:
+            confidence = min(keyword_count / 3, 0.9)
             return Intent(
                 primary=IntentType.EDUCATION,
                 confidence=confidence,
