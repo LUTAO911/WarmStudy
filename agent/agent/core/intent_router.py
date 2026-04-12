@@ -91,18 +91,18 @@ class IntentRouter:
         self._cache: Dict[str, Intent] = {}
         self._cache_ttl = 60
 
-    async def route(
+    def route(
         self,
         message: str,
         context: Optional[RouteContext] = None
     ) -> Intent:
         """
         智能路由判断
-        
+
         Args:
             message: 用户消息
             context: 路由上下文（可选）
-            
+
         Returns:
             Intent: 意图识别结果
         """

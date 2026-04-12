@@ -7,7 +7,6 @@ import uuid
 from typing import Optional, Dict, Any
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-import asyncio
 
 from .auth import require_auth
 from .schemas import (
@@ -184,7 +183,7 @@ def route_intent():
             session_id=session_id,
             user_type=user_type
         )
-        intent = asyncio.run(intent_router.route(message, context))
+        intent = intent_router.route(message, context)
 
         return jsonify({
             "status": "success",

@@ -34,7 +34,7 @@ class TestIntentRouter:
 
     def test_route_returns_intent(self):
         """测试路由返回Intent对象"""
-        result = asyncio.run(self.router.route("你好"))
+        result = self.router.route("你好")
         assert isinstance(result, Intent)
         assert hasattr(result, 'primary')
         assert hasattr(result, 'confidence')
@@ -53,7 +53,7 @@ class TestIntentRouter:
             "割腕",
         ]
         for msg in crisis_messages:
-            result = asyncio.run(self.router.route(msg))
+            result = self.router.route(msg)
             assert result.primary == IntentType.CRISIS_INTERVENTION, f"Failed for: {msg}"
             assert result.confidence == 1.0
             assert result.mode == ConversationMode.CRISIS
@@ -66,12 +66,12 @@ class TestIntentRouter:
             "没有想死",
         ]
         for msg in messages:
-            result = asyncio.run(self.router.route(msg))
+            result = self.router.route(msg)
             assert result.primary != IntentType.CRISIS_INTERVENTION
 
     def test_crisis_priority_over_psychology(self):
         """测试危机优先级高于心理学"""
-        result = asyncio.run(self.router.route("我不想活了"))
+        result = self.router.route("我不想活了")
         assert result.primary == IntentType.CRISIS_INTERVENTION
 
     # ---- 心理学检测测试 ----
@@ -86,12 +86,12 @@ class TestIntentRouter:
             "人际关系困扰",
         ]
         for msg in messages:
-            result = asyncio.run(self.router.route(msg))
+            result = self.router.route(msg)
             assert result.primary == IntentType.PSYCHOLOGY_SUPPORT, f"Failed for: {msg}"
 
     def test_psychology_mode(self):
         """测试心理学模式"""
-        result = asyncio.run(self.router.route("我最近情绪不好"))
+        result = self.router.route("我最近情绪不好")
         assert result.mode == ConversationMode.PSYCHOLOGY
 
     def test_psychology_with_context_boost(self):
@@ -101,7 +101,7 @@ class TestIntentRouter:
             session_id="test",
             emotion_state={"intensity": 0.8}
         )
-        result = asyncio.run(self.router.route("我最近压力很大", context))
+        result = self.router.route("我最近压力很大", context)
         assert result.primary == IntentType.PSYCHOLOGY_SUPPORT
 
     # ---- 教育检测测试 ----
@@ -116,12 +116,12 @@ class TestIntentRouter:
             "物理化学题目",
         ]
         for msg in messages:
-            result = asyncio.run(self.router.route(msg))
+            result = self.router.route(msg)
             assert result.primary == IntentType.EDUCATION, f"Failed for: {msg}"
 
     def test_education_mode(self):
         """测试教育模式"""
-        result = asyncio.run(self.router.route("帮我讲一下这道数学题"))
+        result = self.router.route("帮我讲一下这道数学题")
         assert result.mode == ConversationMode.EDUCATION
 
     # ---- 知识查询检测测试 ----
@@ -136,7 +136,7 @@ class TestIntentRouter:
             "解释一下",
         ]
         for pattern in patterns:
-            result = asyncio.run(self.router.route(pattern))
+            result = self.router.route(pattern)
             assert result.primary == IntentType.KNOWLEDGE_QUERY, f"Failed for: {pattern}"
 
     # ---- 默认聊天检测 ----
@@ -149,7 +149,7 @@ class TestIntentRouter:
             "你是谁",
         ]
         for msg in messages:
-            result = asyncio.run(self.router.route(msg))
+            result = self.router.route(msg)
             assert result.primary == IntentType.GENERAL_CHAT
 
     # ---- 缓存测试 ----
@@ -159,10 +159,10 @@ class TestIntentRouter:
         message = "我最近情绪不好"
 
         # 第一次
-        result1 = asyncio.run(self.router.route(message))
+        result1 = self.router.route(message)
 
         # 第二次（应该命中缓存）
-        result2 = asyncio.run(self.router.route(message))
+        result2 = self.router.route(message)
 
         assert result1.primary == result2.primary
         assert result1.confidence == result2.confidence
@@ -172,13 +172,13 @@ class TestIntentRouter:
         message = "我最近情绪不好"
 
         # 第一次
-        asyncio.run(self.router.route(message))
+        self.router.route(message)
 
         # 清除缓存
         self.router.clear_cache()
 
         # 再次路由应该正常工作
-        result = asyncio.run(self.router.route(message))
+        result = self.router.route(message)
         assert result.primary in IntentType.__members__.values()
 
     # ---- 上下文测试 ----
@@ -191,7 +191,7 @@ class TestIntentRouter:
             user_type="student",
             emotion_state={"emotion": "anxious", "intensity": 0.7}
         )
-        result = asyncio.run(self.router.route("压力好大", context))
+        result = self.router.route("压力好大", context)
         assert result.primary == IntentType.PSYCHOLOGY_SUPPORT
 
     def test_route_context_preserved(self):
@@ -201,32 +201,32 @@ class TestIntentRouter:
             session_id="session_abc",
             user_type="student"
         )
-        result = asyncio.run(self.router.route("测试", context))
+        result = self.router.route("测试", context)
         assert result is not None
 
     # ---- 置信度测试 ----
 
     def test_confidence_range(self):
         """测试置信度范围"""
-        result = asyncio.run(self.router.route("你好"))
+        result = self.router.route("你好")
         assert 0.0 <= result.confidence <= 1.0
 
     def test_high_confidence_crisis(self):
         """测试危机高置信度"""
-        result = asyncio.run(self.router.route("我不想活了"))
+        result = self.router.route("我不想活了")
         assert result.confidence == 1.0
 
     # ---- 元数据测试 ----
 
     def test_metadata_contains_keyword(self):
         """测试元数据包含关键词"""
-        result = asyncio.run(self.router.route("我情绪很低落"))
+        result = self.router.route("我情绪很低落")
         if result.primary == IntentType.PSYCHOLOGY_SUPPORT:
             assert 'keywords' in result.metadata
 
     def test_reasoning_populated(self):
         """测试推理过程填充"""
-        result = asyncio.run(self.router.route("什么是CBT"))
+        result = self.router.route("什么是CBT")
         assert isinstance(result.reasoning, str)
 
 
@@ -506,7 +506,7 @@ class TestIntentWorkflowIntegration:
         message = "我最近情绪很低落"
 
         # 路由
-        intent = asyncio.run(router.route(message))
+        intent = router.route(message)
 
         # 创建工作流
         plan = asyncio.run(engine.create_workflow(message))
@@ -524,7 +524,7 @@ class TestIntentWorkflowIntegration:
 
         message = "我不想活了"
 
-        intent = asyncio.run(router.route(message))
+        intent = router.route(message)
         plan = asyncio.run(engine.create_workflow(message))
 
         # 危机检测应该是第一个任务
@@ -544,7 +544,7 @@ class TestIntentWorkflowIntegration:
         message = "考试好紧张"
 
         # 路由
-        intent = asyncio.run(router.route(message))
+        intent = router.route(message)
 
         # 创建工作流
         plan = asyncio.run(engine.create_workflow(message))
