@@ -222,16 +222,6 @@ class Agent:
         "上吊", "跳楼", "喝药", "一了百了", "结束生命",
     ]
 
-    def _is_psychology_message(self, message: str) -> bool:
-        """检测消息是否与心理学相关"""
-        msg_lower = message.lower()
-        return any(kw in msg_lower for kw in self.PSYCHOLOGY_KEYWORDS)
-
-    def _is_crisis_message(self, message: str) -> bool:
-        """检测消息是否包含危机信号"""
-        msg_lower = message.lower()
-        return any(kw in msg_lower for kw in self.CRISIS_KEYWORDS)
-
     def _handle_psychology_mode(self, message: str, sid: str) -> tuple:
         """
         处理心理学模式查询
@@ -346,7 +336,9 @@ class Agent:
 
         # ========== 心理学模式路由 ==========
         # 如果消息与心理学相关，优先使用心理学工具处理
-        if self._is_psychology_message(message):
+        msg_lower = message.lower()
+        is_psychology = any(kw in msg_lower for kw in self.PSYCHOLOGY_KEYWORDS)
+        if is_psychology:
             psychology_answer, psychology_tool_results, _ = self._handle_psychology_mode(message, sid)
             self.memory.add_assistant_message(psychology_answer, {
                 "session_id": sid,
@@ -482,6 +474,12 @@ class Agent:
 
     def _llm_judge_needs(self, message: str, sid: str) -> tuple:
         """用 LLM 智能判断是否需要 RAG / Tools，替代简单关键词匹配"""
+        rag_keywords = ["什么", "如何", "怎么", "为什么", "原因", "定义", "概念",
+                        "解释", "区别", "哪个", "哪些", "知识", "文档", "规则"]
+        tools_keywords = ["计算", "时间", "现在", "几点", "日期", "搜索",
+                          "查询", "查一下", "帮我找", "天气",
+                          "情绪", "心情", "压力", "焦虑", "难过", "开心",
+                          "心理", "心理问题", "心理咨询"]
         judge_prompt = (
             "你是一个任务规划助手。判断用户问题是否需要以下能力，只需回答是或否：\n\n"
             "问题: " + message + "\n\n"
@@ -495,24 +493,12 @@ class Agent:
             need_rag = "RAG:是" in result or ("RAG" in result and "是" in result)
             need_tools = "Tools:是" in result or ("Tools" in result and "是" in result)
             if "是" not in result and "否" not in result:
-                need_rag = self._keyword_rag(message)
-                need_tools = self._keyword_tools(message)
+                need_rag = any(k in message for k in rag_keywords)
+                need_tools = any(k in message for k in tools_keywords)
             return need_rag, need_tools
         except Exception:
-            return self._keyword_rag(message), self._keyword_tools(message)
-
-    def _keyword_rag(self, message: str) -> bool:
-        keywords = ["什么", "如何", "怎么", "为什么", "原因", "定义", "概念",
-                     "解释", "区别", "哪个", "哪些", "知识", "文档", "规则"]
-        return any(k in message for k in keywords)
-
-    def _keyword_tools(self, message: str) -> bool:
-        keywords = ["计算", "时间", "现在", "几点", "日期", "搜索",
-                     "查询", "查一下", "帮我找", "天气",
-                     # 心理学相关
-                     "情绪", "心情", "压力", "焦虑", "难过", "开心",
-                     "心理", "心理问题", "心理咨询"]
-        return any(k in message for k in keywords)
+            return (any(k in message for k in rag_keywords),
+                    any(k in message for k in tools_keywords))
 
     def _react_loop(self, message: str, sid: str,
                      context_results: List[Dict[str, Any]],
@@ -797,101 +783,80 @@ class Agent:
 
     def _generate_response(self, prompt: str,
                            stream_callback: Optional[Callable] = None) -> str:
-        try:
-            import os
-            chat_model = os.getenv("CHAT_MODEL", "minimax")
-            api_key = self._get_api_key()
-            if chat_model == "minimax":
-                return self._generate_minimax_response(prompt, api_key, stream_callback)
-            else:
-                return self._generate_dashscope_response(prompt, api_key)
-        except Exception as e:
-            return f"Error generating response: {str(e)}"
-
-    def _generate_minimax_response(self, prompt: str, api_key: str,
-                                   stream_callback: Optional[Callable] = None) -> str:
-        try:
-            import requests
-            url = "https://api.minimaxi.com/anthropic/v1/messages"
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "anthropic-version": "2023-06-01"
-            }
-            data = {
-                "model": "MiniMax-M2.7",
-                "max_tokens": self.config.max_tokens or 1024,
-                "temperature": self.config.temperature,
-                "messages": [{"role": "user", "content": prompt}]
-            }
-
-            if self.config.enable_streaming and stream_callback:
-                data["stream"] = True
-                resp = requests.post(url, headers=headers, json=data, timeout=120, stream=True)
-                if resp.status_code == 200:
-                    full_text = ""
-                    for line in resp.iter_lines():
-                        if line:
-                            line = line.decode("utf-8", errors="replace")
-                            if line.startswith("data:"):
-                                chunk = line[5:].strip()
-                                if chunk == "[DONE]":
-                                    break
-                                try:
-                                    chunk_data = json.loads(chunk)
-                                    content = chunk_data.get("content", [])
-                                    for block in content:
-                                        if block.get("type") == "text":
-                                            txt = block.get("text", "")
-                                            full_text += txt
-                                            stream_callback(txt)
-                                except Exception:
-                                    pass
-                    return full_text
-
-            resp = requests.post(url, headers=headers, json=data, timeout=60)
-            if resp.status_code == 200:
-                result = resp.json()
-                content = result.get("content", [])
-                if isinstance(content, list):
-                    for block in content:
-                        if block.get("type") == "text":
-                            return block.get("text", "")
-                return str(result)
-            elif resp.status_code == 401:
-                return "Error: MiniMax API unauthorized - check API key"
-            elif resp.status_code == 429:
-                return "Error: MiniMax API rate limited - please retry later"
-            else:
-                return f"Error: MiniMax API returned {resp.status_code}: {resp.text[:300]}"
-        except Exception as e:
-            return f"Error generating MiniMax response: {str(e)}"
-
-    def _generate_dashscope_response(self, prompt: str, api_key: str) -> str:
-        try:
-            from dashscope import Generation
-            import dashscope
-            dashscope.api_key = api_key
-            resp = Generation.call(
-                model=self.config.model,
-                prompt=prompt,
-                temperature=self.config.temperature,
-                top_p=self.config.top_p,
-                max_tokens=self.config.max_tokens,
-                result_format="message",
-            )
-            if resp.status_code != 200:
-                return f"Error: {resp.message}"
-            return resp.output["choices"][0]["message"]["content"]
-        except Exception as e:
-            return f"Error generating DashScope response: {str(e)}"
-
-    def _get_api_key(self) -> str:
         import os
+        import requests
         chat_model = os.getenv("CHAT_MODEL", "minimax")
         if chat_model == "minimax":
-            return os.getenv("MINIMAX_API_KEY", os.getenv("DASHSCOPE_API_KEY", ""))
-        return os.getenv("DASHSCOPE_API_KEY", "")
+            api_key = os.getenv("MINIMAX_API_KEY", os.getenv("DASHSCOPE_API_KEY", ""))
+            try:
+                url = "https://api.minimaxi.com/anthropic/v1/messages"
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    "anthropic-version": "2023-06-01"
+                }
+                data = {
+                    "model": "MiniMax-M2.7",
+                    "max_tokens": self.config.max_tokens or 1024,
+                    "temperature": self.config.temperature,
+                    "messages": [{"role": "user", "content": prompt}]
+                }
+                if self.config.enable_streaming and stream_callback:
+                    data["stream"] = True
+                    resp = requests.post(url, headers=headers, json=data, timeout=120, stream=True)
+                    if resp.status_code == 200:
+                        full_text = ""
+                        for line in resp.iter_lines():
+                            if line:
+                                line = line.decode("utf-8", errors="replace")
+                                if line.startswith("data:"):
+                                    chunk = line[5:].strip()
+                                    if chunk == "[DONE]":
+                                        break
+                                    try:
+                                        chunk_data = json.loads(chunk)
+                                        for block in chunk_data.get("content", []):
+                                            if block.get("type") == "text":
+                                                txt = block.get("text", "")
+                                                full_text += txt
+                                                stream_callback(txt)
+                                    except Exception:
+                                        pass
+                        return full_text
+                resp = requests.post(url, headers=headers, json=data, timeout=60)
+                if resp.status_code == 200:
+                    result = resp.json()
+                    for block in result.get("content", []):
+                        if block.get("type") == "text":
+                            return block.get("text", "")
+                    return str(result)
+                elif resp.status_code == 401:
+                    return "Error: MiniMax API unauthorized - check API key"
+                elif resp.status_code == 429:
+                    return "Error: MiniMax API rate limited - please retry later"
+                else:
+                    return f"Error: MiniMax API returned {resp.status_code}: {resp.text[:300]}"
+            except Exception as e:
+                return f"Error generating MiniMax response: {str(e)}"
+        else:
+            api_key = os.getenv("DASHSCOPE_API_KEY", "")
+            try:
+                from dashscope import Generation
+                import dashscope
+                dashscope.api_key = api_key
+                resp = Generation.call(
+                    model=self.config.model,
+                    prompt=prompt,
+                    temperature=self.config.temperature,
+                    top_p=self.config.top_p,
+                    max_tokens=self.config.max_tokens,
+                    result_format="message",
+                )
+                if resp.status_code != 200:
+                    return f"Error: {resp.message}"
+                return resp.output["choices"][0]["message"]["content"]
+            except Exception as e:
+                return f"Error generating DashScope response: {str(e)}"
 
     def get_session_info(self, session_id: Optional[str] = None) -> Dict[str, Any]:
         sid = session_id or "default"

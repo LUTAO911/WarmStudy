@@ -134,21 +134,12 @@ class Orchestrator:
         self._response_cache: Dict[str, tuple] = {}
         self._cache_ttl = 300
 
-    def _is_psychology_message(self, message: str) -> bool:
-        """检测消息是否与心理学相关"""
-        msg_lower = message.lower()
-        return any(kw in msg_lower for kw in self.PSYCHOLOGY_KEYWORDS)
-
-    def _is_crisis_message(self, message: str) -> bool:
-        """检测消息是否包含危机信号"""
-        msg_lower = message.lower()
-        return any(kw in msg_lower for kw in self.CRISIS_KEYWORDS)
-
     def _determine_mode(self, message: str) -> ConversationMode:
-        """确定对话模式"""
-        if self._is_crisis_message(message):
+        """确定对话模式（危机 > 心理学 > 普通）"""
+        msg_lower = message.lower()
+        if any(kw in msg_lower for kw in self.CRISIS_KEYWORDS):
             return ConversationMode.CRISIS
-        if self._is_psychology_message(message):
+        if any(kw in msg_lower for kw in self.PSYCHOLOGY_KEYWORDS):
             return ConversationMode.PSYCHOLOGY
         return ConversationMode.CHAT
 
