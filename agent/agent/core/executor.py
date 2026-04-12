@@ -4,6 +4,7 @@ executor.py - Agent 执行层
 职责：执行具体任务（RAG检索、工具调用、LLM生成）
 对结果负责，不做判断
 """
+import hashlib
 import time
 import json
 from typing import List, Dict, Any, Optional, Callable
@@ -99,8 +100,8 @@ class Executor:
         缓存 key = SHA256(prompt)，TTL = 600s
         """
         # 1. 查缓存
-        prompt_hash = hash(prompt)  # 用内置 hash 快
-        cached = self._redis.get_llm_cache(str(prompt_hash))
+        prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
+        cached = self._redis.get_llm_cache(prompt_hash)
         if cached:
             return cached.get("answer", "")
 
@@ -113,7 +114,7 @@ class Executor:
         # 3. 写缓存
         if answer and not answer.startswith("Error:"):
             self._redis.set_llm_cache(
-                str(prompt_hash),
+                prompt_hash,
                 {"answer": answer, "model": model, "tokens": len(prompt)},
                 ttl=600
             )
