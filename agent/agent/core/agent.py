@@ -18,7 +18,6 @@ from agent.tool_registry import ToolRegistry, ToolResult, setup_builtin_tools
 from agent.context import ContextManager
 from agent.skills import SkillRegistry, SkillResult, setup_builtin_skills
 from agent.prompts import PromptManager, DynamicPromptBuilder
-from redis_client import get_redis
 from agent.core.router import Router, RouteDecision
 from agent.core.executor import Executor
 
@@ -765,7 +764,7 @@ class Evaluator:
     评审器：用 Qwen-Turbo 做质量评估，便宜快
     """
     def __init__(self):
-        self._redis = get_redis()
+        pass
 
     def reflect(self, answer, message, context_results):
         ctx = "\n".join([

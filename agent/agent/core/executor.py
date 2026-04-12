@@ -8,17 +8,14 @@ import time
 import json
 from typing import List, Dict, Any, Optional, Callable
 
-from redis_client import get_redis
-
 
 class Executor:
     """
     执行器：执行 RAG 检索 + 工具 + LLM 生成
-    结果缓存：相同 prompt 的 LLM 响应在 Redis 中缓存 10 分钟
     """
 
     def __init__(self):
-        self._redis = get_redis()
+        pass
 
     def retrieve_context(
         self,
@@ -94,30 +91,11 @@ class Executor:
         temperature: float = 0.7,
         max_tokens: int = 1024
     ) -> str:
-        """
-        LLM 生成（带 Redis 缓存）
-        缓存 key = SHA256(prompt)，TTL = 600s
-        """
-        # 1. 查缓存
-        prompt_hash = hash(prompt)  # 用内置 hash 快
-        cached = self._redis.get_llm_cache(str(prompt_hash))
-        if cached:
-            return cached.get("answer", "")
-
-        # 2. 生成
+        """LLM 生成"""
         if model == "minimax":
             answer = self._generate_minimax(prompt, temperature, max_tokens, stream_callback)
         else:
             answer = self._generate_dashscope(prompt, temperature, max_tokens)
-
-        # 3. 写缓存
-        if answer and not answer.startswith("Error:"):
-            self._redis.set_llm_cache(
-                str(prompt_hash),
-                {"answer": answer, "model": model, "tokens": len(prompt)},
-                ttl=600
-            )
-
         return answer
 
     def _generate_minimax(

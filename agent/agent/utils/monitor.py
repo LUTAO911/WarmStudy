@@ -1,7 +1,7 @@
 """
-Monitor - 性能监控与系统状态追踪 + Prometheus指标导出
+Monitor - 性能监控与系统状态追踪
 版本: 2.0
-增强: Prometheus兼容、A/B测试支持、告警机制
+增强: A/B测试支持、告警机制
 """
 import time
 import psutil
@@ -13,11 +13,6 @@ from datetime import datetime
 from collections import deque
 from enum import Enum
 
-try:
-    from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
-    PROMETHEUS_AVAILABLE = True
-except ImportError:
-    PROMETHEUS_AVAILABLE = False
 
 
 class AlertLevel(Enum):
@@ -74,138 +69,6 @@ class Alert:
     metric_value: float
     threshold: float
     timestamp: float
-
-
-class PrometheusMetrics:
-    def __init__(self, prefix: str = "rag_agent"):
-        if not PROMETHEUS_AVAILABLE:
-            self._enabled = False
-            return
-
-        self._enabled = True
-        self.prefix = prefix
-
-        self.requests_total = Counter(
-            f"{prefix}_requests_total",
-            "Total number of requests",
-            ["endpoint", "method"]
-        )
-
-        self.request_duration = Histogram(
-            f"{prefix}_request_duration_seconds",
-            "Request duration in seconds",
-            ["endpoint"],
-            buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
-        )
-
-        self.active_sessions = Gauge(
-            f"{prefix}_active_sessions",
-            "Number of active sessions"
-        )
-
-        self.errors_total = Counter(
-            f"{prefix}_errors_total",
-            "Total number of errors",
-            ["endpoint", "error_type"]
-        )
-
-        self.cpu_usage = Gauge(
-            f"{prefix}_cpu_usage_percent",
-            "CPU usage percentage"
-        )
-
-        self.memory_usage = Gauge(
-            f"{prefix}_memory_usage_percent",
-            "Memory usage percentage"
-        )
-
-        self.search_quality_score = Gauge(
-            f"{prefix}_search_quality_score",
-            "Search quality score (A/B test)",
-            ["variant"]
-        )
-
-        self.cache_hits = Counter(
-            f"{prefix}_cache_hits_total",
-            "Total cache hits"
-        )
-
-        self.cache_misses = Counter(
-            f"{prefix}_cache_misses_total",
-            "Total cache misses"
-        )
-
-        self.tool_calls = Counter(
-            f"{prefix}_tool_calls_total",
-            "Total tool calls",
-            ["tool_name"]
-        )
-
-    def record_request(self, endpoint: str, method: str, duration: float):
-        if not self._enabled:
-            return
-        self.requests_total.labels(endpoint=endpoint, method=method).inc()
-        self.request_duration.labels(endpoint=endpoint).observe(duration)
-
-    def record_error(self, endpoint: str, error_type: str):
-        if not self._enabled:
-            return
-        self.errors_total.labels(endpoint=endpoint, error_type=error_type).inc()
-
-    def set_active_sessions(self, count: int):
-        if not self._enabled:
-            return
-        self.active_sessions.set(count)
-
-    def set_cpu_usage(self, percent: float):
-        if not self._enabled:
-            return
-        self.cpu_usage.set(percent)
-
-    def set_memory_usage(self, percent: float):
-        if not self._enabled:
-            return
-        self.memory_usage.set(percent)
-
-    def set_search_quality(self, variant: str, score: float):
-        if not self._enabled:
-            return
-        self.search_quality_score.labels(variant=variant).set(score)
-
-    def record_cache_hit(self):
-        if not self._enabled:
-            return
-        self.cache_hits.inc()
-
-    def record_cache_miss(self):
-        if not self._enabled:
-            return
-        self.cache_misses.inc()
-
-    def record_tool_call(self, tool_name: str):
-        if not self._enabled:
-            return
-        self.tool_calls.labels(tool_name=tool_name).inc()
-
-    def _unregister(self) -> None:
-        if not self._enabled:
-            return
-        from prometheus_client import REGISTRY
-        collectors = [
-            self.requests_total, self.request_duration, self.active_sessions,
-            self.errors_total, self.cpu_usage, self.memory_usage,
-            self.search_quality_score, self.cache_hits, self.cache_misses, self.tool_calls
-        ]
-        for collector in collectors:
-            try:
-                REGISTRY.unregister(collector)
-            except Exception:
-                pass
-
-    def generate(self) -> bytes:
-        if not self._enabled:
-            return b""
-        return generate_latest()
 
 
 class ABTestTracker:
@@ -441,7 +304,6 @@ class PerformanceMonitor:
         self._monitoring: bool = False
         self._monitor_thread: Optional[threading.Thread] = None
 
-        self._prometheus = PrometheusMetrics()
         self._ab_tracker = ABTestTracker()
         self._weight_tuner = AdaptiveWeightTuner()
         self._alert_manager = AlertManager()
@@ -500,8 +362,6 @@ class PerformanceMonitor:
 
     def _update_system_metrics(self) -> None:
         metrics = self.get_current_metrics()
-        self._prometheus.set_cpu_usage(metrics.cpu_percent)
-        self._prometheus.set_memory_usage(metrics.memory_percent)
         self._alert_manager.check_metrics(metrics)
 
     def _cleanup_stale_sessions(self, timeout: float = 3600.0) -> None:
@@ -544,8 +404,6 @@ class PerformanceMonitor:
             self._tool_calls += tools_used
             self._skill_calls += skills_used
 
-        self._prometheus.record_request("chat", "POST", response_time)
-
     def record_search(
         self,
         variant: str,
@@ -560,13 +418,13 @@ class PerformanceMonitor:
             self._ab_tracker.record_score(variant, user_feedback)
 
     def record_cache_hit(self) -> None:
-        self._prometheus.record_cache_hit()
+        pass
 
     def record_cache_miss(self) -> None:
-        self._prometheus.record_cache_miss()
+        pass
 
     def record_tool_call(self, tool_name: str) -> None:
-        self._prometheus.record_tool_call(tool_name)
+        pass
 
     def get_current_metrics(self) -> MonitorMetrics:
         process = psutil.Process()
@@ -659,8 +517,8 @@ class PerformanceMonitor:
             for a in alerts
         ]
 
-    def get_prometheus_metrics(self) -> bytes:
-        return self._prometheus.generate()
+    def get_metrics(self) -> bytes:
+        return b""
 
     def add_alert_handler(self, handler: Callable[[Alert], None]) -> None:
         self._alert_manager.add_handler(handler)
@@ -668,8 +526,6 @@ class PerformanceMonitor:
     @classmethod
     def reset_instance(cls) -> None:
         with cls._lock_class:
-            if cls._instance is not None:
-                cls._instance._prometheus._unregister()
             cls._instance = None
 
 

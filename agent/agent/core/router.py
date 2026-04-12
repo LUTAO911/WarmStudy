@@ -6,11 +6,8 @@ router.py - Agent 路由决策层
 """
 import os
 import re
-import hashlib
 from dataclasses import dataclass
 from typing import Dict, Any
-
-from redis_client import get_redis
 
 
 @dataclass(frozen=True)
@@ -26,43 +23,18 @@ class RouteDecision:
 class Router:
     """
     路由决策器：Qwen-Turbo 做判断（便宜 + 快速）
-    优先查 Redis 缓存，同一问题不重复调用 LLM
     """
 
     def __init__(self):
-        self._redis = get_redis()
         self._qwen_api_key = os.getenv("DASHSCOPE_API_KEY", "")
-        self._cache_ttl = int(os.getenv("REDIS_CACHE_TTL", "300"))
 
     def decide(self, message: str, session_id: str) -> RouteDecision:
         """
         智能路由判断：
-        1. 先查 Redis 缓存
-        2. 缓存未命中 → Qwen-Turbo 判断
-        3. Qwen 不可用 → 关键词兜底
+        1. Qwen-Turbo 判断
+        2. Qwen 不可用 → 关键词兜底
         """
-        # 1. 查缓存
-        cached = self._redis.get_cached_answer(f"route:{message}", session_id)
-        if cached:
-            parts = cached.split("|")
-            if len(parts) == 4:
-                return RouteDecision(
-                    need_rag=parts[0] == "1",
-                    need_tools=parts[1] == "1",
-                    need_skills=parts[2] == "1",
-                    confidence=float(parts[3]),
-                    reasoning="[cached]"
-                )
-
-        # 2. Qwen 判断
-        decision = self._qwen_decide(message)
-        self._redis.set_cached_answer(
-            f"route:{message}", session_id,
-            f"{int(decision.need_rag)}|{int(decision.need_tools)}|"
-            f"{int(decision.need_skills)}|{decision.confidence}",
-            ttl=self._cache_ttl
-        )
-        return decision
+        return self._qwen_decide(message)
 
     def _qwen_decide(self, message: str) -> RouteDecision:
         """用 Qwen-Turbo 做路由判断"""
