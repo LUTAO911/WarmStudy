@@ -523,7 +523,7 @@ class Agent:
 
         if context_results:
             ctx = "\n".join([
-                f"[{i+1}] {d.get("content", "")[:200]}"
+                "[{}] {}".format(i+1, d.get("content", "")[:200])
                 for i, d in enumerate(context_results[:3])
             ])
             accumulated = "\n已有知识库上下文:\n" + ctx
