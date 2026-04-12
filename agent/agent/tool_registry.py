@@ -13,7 +13,6 @@ from enum import Enum
 from pathlib import Path
 
 
-@dataclass(frozen=True)
 class ToolStatus(Enum):
     SUCCESS = "success"
     ERROR = "error"
@@ -341,7 +340,7 @@ class SafeCalculator:
         try:
             tree = ast.parse(expression, mode="eval")
             result = eval_node(tree.body)
-            return float(result) if isinstance(result, float) else result
+            return float(result)
         except (ValueError, SyntaxError, ZeroDivisionError) as e:
             return f"Error: {str(e)}"
 
@@ -357,13 +356,17 @@ class BuiltinTools:
                 persist_dir="data/chroma",
                 collection_name="knowledge_base"
             )
+            SIMILARITY_THRESHOLD = 0.6  # 相似度低于此值视为无关结果
             output: List[Dict[str, Any]] = []
             for doc, meta, dist in results:
+                similarity = round(1 - dist, 4)
+                if similarity < SIMILARITY_THRESHOLD:
+                    continue
                 output.append({
                     "content": doc[:300],
                     "source": str(meta.get("source", "")),
                     "page": meta.get("page", ""),
-                    "similarity": round(1 - dist, 4)
+                    "similarity": similarity
                 })
             return {"ok": True, "results": output, "count": len(output)}
         except Exception as e:
