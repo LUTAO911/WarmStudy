@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from agent.context import ContextManager
     from agent.tools import ToolRegistry
     from agent.modules.psychology import PsychologyModule
+    from agent.memory_store.unified_memory import UnifiedMemoryManager
 
 class ConversationMode(Enum):
     """对话模式"""

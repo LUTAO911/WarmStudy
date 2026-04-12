@@ -68,9 +68,6 @@ class AgentConfig:
             "enable_response_cache": self.enable_response_cache,
             "cache_ttl_seconds": self.cache_ttl_seconds,
             "use_qwen_judge": self.use_qwen_judge,
-            "enable_response_cache": self.enable_response_cache,
-            "cache_ttl_seconds": self.cache_ttl_seconds,
-            "use_qwen_judge": self.use_qwen_judge,
             "enable_streaming": self.enable_streaming,
             "reflection_threshold": self.reflection_threshold,
             "hybrid_search_default": self.hybrid_search_default,
@@ -589,7 +586,6 @@ class Agent:
             "final" in t or
             "结束" in thought or
             t.startswith("final_answer") or
-            len(thought) < 30 or
             ("不再需要" in thought or "不需要" in thought)
         )
 
@@ -682,9 +678,6 @@ class Agent:
                          rerank: bool = True) -> List[Dict[str, Any]]:
         """知识库检索（带缓存，避免同一 query 重复检索）"""
         cache_key = f"{query}:{n_results}:{use_hybrid}:{rerank}"
-        with self._cache_lock:
-            if cache_key in self._query_cache:
-                return []
         try:
             if use_hybrid:
                 from vectorstore import query_with_hybrid_search
