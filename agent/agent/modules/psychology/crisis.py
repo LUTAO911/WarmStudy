@@ -81,7 +81,7 @@ CRISIS_KEYWORDS = {
 
 # 否定词（降低风险）
 NEGATION_WORDS = [
-    "不想", "不会", "没有想", "不是想",
+    "不想", "不会", "没有想", "不是想", "没有",
     "开个玩笑", "说着玩的", "开玩笑",
     "别人", "有人", "如果", "假设"
 ]
@@ -173,7 +173,7 @@ class CrisisDetector:
         if idx == -1:
             return False
         
-        # 检查前面50个字符是否有否定词
+        # 检查前面30个字符是否有否定词
         start = max(0, idx - 30)
         context = text[start:idx]
         

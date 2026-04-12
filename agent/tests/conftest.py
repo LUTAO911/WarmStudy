@@ -62,29 +62,62 @@ def sample_context_data() -> dict:
 @pytest.fixture(autouse=True)
 def reset_singletons():
     """Reset all singleton instances before each test."""
-    from agent.memory import MemoryManager
-    from agent.tools import ToolRegistry
-    from agent.skills import SkillRegistry
-    from agent.prompts import PromptManager
-    from agent.core.agent import AgentManager
-    from agent.utils.monitor import PerformanceMonitor
-    from agent.utils.logger import AgentLogger
-    from agent.api.auth import AuthManager
-
-    MemoryManager.reset_instance() if hasattr(MemoryManager, 'reset_instance') else None
-    ToolRegistry.reset_instance() if hasattr(ToolRegistry, 'reset_instance') else None
-    SkillRegistry.reset_instance() if hasattr(SkillRegistry, 'reset_instance') else None
-    PromptManager.reset_instance() if hasattr(PromptManager, 'reset_instance') else None
-    AgentManager.reset_instance() if hasattr(AgentManager, 'reset_instance') else None
-    PerformanceMonitor.reset_instance() if hasattr(PerformanceMonitor, 'reset_instance') else None
-    AuthManager.reset_instance() if hasattr(AuthManager, 'reset_instance') else None
+    # Import only modules that exist and have reset_instance methods
+    try:
+        from agent.memory import MemoryManager
+        if hasattr(MemoryManager, 'reset_instance'):
+            MemoryManager.reset_instance()
+    except ImportError:
+        pass
+    
+    try:
+        from agent.skills import SkillRegistry
+        if hasattr(SkillRegistry, 'reset_instance'):
+            SkillRegistry.reset_instance()
+    except ImportError:
+        pass
+    
+    try:
+        from agent.prompts import PromptManager
+        if hasattr(PromptManager, 'reset_instance'):
+            PromptManager.reset_instance()
+    except ImportError:
+        pass
+    
+    try:
+        from agent.core.agent import AgentManager
+        if hasattr(AgentManager, 'reset_instance'):
+            AgentManager.reset_instance()
+    except ImportError:
+        pass
 
     yield
 
-    MemoryManager.reset_instance() if hasattr(MemoryManager, 'reset_instance') else None
-    ToolRegistry.reset_instance() if hasattr(ToolRegistry, 'reset_instance') else None
-    SkillRegistry.reset_instance() if hasattr(SkillRegistry, 'reset_instance') else None
-    PromptManager.reset_instance() if hasattr(PromptManager, 'reset_instance') else None
-    AgentManager.reset_instance() if hasattr(AgentManager, 'reset_instance') else None
-    PerformanceMonitor.reset_instance() if hasattr(PerformanceMonitor, 'reset_instance') else None
-    AuthManager.reset_instance() if hasattr(AuthManager, 'reset_instance') else None
+    # Cleanup after test
+    try:
+        from agent.memory import MemoryManager
+        if hasattr(MemoryManager, 'reset_instance'):
+            MemoryManager.reset_instance()
+    except ImportError:
+        pass
+    
+    try:
+        from agent.skills import SkillRegistry
+        if hasattr(SkillRegistry, 'reset_instance'):
+            SkillRegistry.reset_instance()
+    except ImportError:
+        pass
+    
+    try:
+        from agent.prompts import PromptManager
+        if hasattr(PromptManager, 'reset_instance'):
+            PromptManager.reset_instance()
+    except ImportError:
+        pass
+    
+    try:
+        from agent.core.agent import AgentManager
+        if hasattr(AgentManager, 'reset_instance'):
+            AgentManager.reset_instance()
+    except ImportError:
+        pass
