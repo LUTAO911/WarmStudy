@@ -623,7 +623,7 @@ class Agent:
             query = str(action_input) if action_input else ""
             results = self._retrieve_context(query, sid, n_results=3, use_hybrid=True, rerank=False)
             if results:
-                return "\n".join([f"[{i+1}] {r.get("content", "")[:200]}"
+                return "\n".join([f'[{i+1}] {r.get("content", "")[:200]}'
                                    for i, r in enumerate(results)])
             return "未找到相关信息"
 
@@ -790,7 +790,7 @@ class Agent:
 
         return (
             f"{system_prompt}\n\n"
-            f"Conversation History:\n{history or "No previous messages"}\n\n"
+            f"Conversation History:\n{history or 'No previous messages'}\n\n"
             + (f"Additional Context:\n{ctx}\n\n" if ctx else "\n")
             + f"User: {message}\n\nAssistant:"
         )
