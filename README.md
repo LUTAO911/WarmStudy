@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-v4.0-blue)
+![Version](https://img.shields.io/badge/version-v5.0-blue)
 ![Python](https://img.shields.io/badge/python-3.10+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
@@ -246,7 +246,7 @@ class EmotionWeightedRetriever:
 
 ---
 
-## 五、部署指南
+## 五、快速部署
 
 ### 5.1 环境要求
 
@@ -256,35 +256,51 @@ class EmotionWeightedRetriever:
 | Docker | 24.0 | 24.0+ |
 | 内存 | 8GB | 16GB+ |
 
-### 5.2 Docker部署
+### 5.2 一键安装 (Windows)
+
+双击运行 `agent/setup.bat`，会自动：
+1. 检测 Python 版本
+2. 创建虚拟环境 (.venv)
+3. 安装所有依赖
+4. 生成 .env 配置文件
+
+### 5.3 手动安装
 
 ```bash
-# 1. 配置环境变量
+# 1. 进入 agent 目录
 cd agent
-cp .env.example .env
-# 编辑 .env，填入 DASHSCOPE_API_KEY
 
-# 2. 启动服务
-docker-compose up -d
-
-# 3. 验证
-curl http://localhost:5177/api/agent/health
-```
-
-### 5.3 本地部署
-
-```bash
-# 1. 创建虚拟环境
-cd agent
+# 2. 创建虚拟环境
 python -m venv .venv
-source .venv/Scripts/activate
 
-# 2. 安装依赖
+# 3. 激活虚拟环境 (Windows)
+.venv\Scripts\activate
+
+# 4. 安装依赖
 pip install -r requirements.txt
 
-# 3. 运行
-python app.py
+# 5. 配置环境变量
+copy .env.example .env
+# 编辑 .env，填入你的 DASHSCOPE_API_KEY
 ```
+
+### 5.4 启动服务
+
+```bash
+# 方式1: 使用脚本 (Windows)
+start_venv.bat
+
+# 方式2: 手动启动
+.venv\Scripts\activate
+python app.py
+
+# 方式3: Docker部署
+docker-compose up -d
+```
+
+### 5.5 验证
+
+启动后访问: http://localhost:5177/api/docs
 
 ---
 
