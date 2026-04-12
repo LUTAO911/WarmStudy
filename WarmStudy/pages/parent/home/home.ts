@@ -91,7 +91,7 @@ Page({
 
   onShow() {
     if (this.data.isLoggedIn) {
-      this.refreshChildren();
+      this.onRefreshChildren();
       this.loadAllData();
     }
   },
@@ -121,12 +121,12 @@ Page({
         boundChildren: saved.children || [],
       });
       // 每次进来都从后端拉最新绑定数据
-      this.refreshChildren();
+      this.onRefreshChildren();
       this.loadAllData();
     }
   },
 
-  async refreshChildren() {
+  async onRefreshChildren() {
     const phone = this.data.parentPhone;
     if (!phone) return;
     try {

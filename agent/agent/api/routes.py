@@ -8,14 +8,10 @@ from typing import Optional, Dict, Any
 from flask import Blueprint, request, jsonify, Response
 from datetime import datetime
 import json
-import asyncio
-from functools import partial
 
 from .auth import require_auth, get_auth_manager
-from agent.core.agent import Agent, AgentConfig, AgentManager, AgentMode
-from agent.memory import MemoryManager
+from agent.core.agent import Agent, AgentConfig, AgentManager
 from agent.tool_registry import ToolRegistry, setup_builtin_tools
-from agent.context import ContextManager
 from agent.skills import SkillRegistry, setup_builtin_skills
 from agent.prompts import PromptManager
 from agent.utils.logger import AgentLogger, RequestLogger
@@ -179,10 +175,10 @@ def rag_chat() -> tuple[Dict[str, Any], int]:
 
         agent = _get_or_create_agent()
 
-        if use_hybrid:
-            context_results = agent._retrieve_context_hybrid(message, n_results, use_rerank)
-        else:
-            context_results = agent._retrieve_context(message, n_results)
+        context_results = agent._retrieve_context(
+            message, session_id, n_results=n_results,
+            use_hybrid=use_hybrid, rerank=use_rerank
+        )
 
         prompt = agent.prompts.render(
             "rag_prompt",

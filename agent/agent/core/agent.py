@@ -19,8 +19,6 @@ from agent.context import ContextManager
 from agent.skills import SkillRegistry, SkillResult, setup_builtin_skills
 from agent.prompts import PromptManager, DynamicPromptBuilder
 from redis_client import get_redis
-from agent.core.router import Router, RouteDecision
-from agent.core.executor import Executor
 
 
 class AgentMode(Enum):
@@ -68,13 +66,10 @@ class AgentConfig:
             "enable_response_cache": self.enable_response_cache,
             "cache_ttl_seconds": self.cache_ttl_seconds,
             "use_qwen_judge": self.use_qwen_judge,
-            "enable_response_cache": self.enable_response_cache,
-            "cache_ttl_seconds": self.cache_ttl_seconds,
-            "use_qwen_judge": self.use_qwen_judge,
             "enable_streaming": self.enable_streaming,
             "reflection_threshold": self.reflection_threshold,
             "hybrid_search_default": self.hybrid_search_default,
-            "rerank_default": self.rerank_default
+            "rerank_default": self.rerank_default,
         }
 
 
@@ -186,10 +181,6 @@ class Agent:
         self._query_cache: Dict[str, str] = {}
         self._cache_lock: threading.RLock = threading.RLock()
         self._response_cache: ResponseCache = ResponseCache(ttl_seconds=300, max_size=2000)
-        self._use_qwen_judge: bool = True
-        self._router = Router()
-        self._executor = Executor()
-        self._evaluator = Evaluator()
         self._setup_components()
 
     def _setup_components(self) -> None:
@@ -562,27 +553,6 @@ class Agent:
         except Exception:
             return []
 
-    def _execute_tools(self, message: str) -> List[ToolResult]:
-        results: List[ToolResult] = []
-        msg_lower = message.lower()
-
-        if any(k in msg_lower for k in ["搜索", "search", "查询"]):
-            if any(k in message for k in ["知识", "库", "document"]):
-                tr = self.tools.execute("search_knowledge_base", query=message, n_results=5)
-                results.append(tr)
-
-        all_tools = self.tools.get_all()
-        for tool_name, tool_schema in all_tools.items():
-            desc_words = tool_schema.description.lower().split()
-            if any(k in msg_lower for k in desc_words):
-                if tool_name not in [r.tool_name for r in results]:
-                    try:
-                        tr = self.tools.execute(tool_name, query=message)
-                        results.append(tr)
-                    except Exception:
-                        pass
-        return results
-
     def _execute_skills(self, message: str) -> List[SkillResult]:
         results: List[SkillResult] = []
         msg_lower = message.lower()
@@ -782,7 +752,7 @@ class Evaluator:
             resp = client.chat.completions.create(
                 model="qwen-turbo",
                 messages=[{"role": "user", "content":
-                    "\u7528\u6237\u95ee\u9898: %s\n\u53c2\u8003: %s\n\u8bf7\u7ed9\u51fa\u66f4\u5b8c\u6574\u7684\u56de\u7b54:" % (message, ctx[:500])}],
+                    f"\u7528\u6237\u95ee\u9898: {message}\n\u53c2\u8003: {ctx[:500]}\n\u8bf7\u7ed9\u51fa\u66f4\u5b8c\u6574\u7684\u56de\u7b54:"}],
                 max_tokens=512,
                 temperature=0.1,
             )
