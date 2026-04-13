@@ -2,11 +2,11 @@ name: Agent CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, wcy ]
     paths:
       - 'agent/**'
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, wcy ]
     paths:
       - 'agent/**'
 
