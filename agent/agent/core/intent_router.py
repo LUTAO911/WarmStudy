@@ -67,7 +67,7 @@ class IntentRouter:
     # 心理学关键词
     PSYCHOLOGY_KEYWORDS = [
         "情绪", "心情", "难过", "开心", "生气", "害怕", "焦虑",
-        "压力", "紧张", "压抑", "沮喪", "失落", "失眠",
+        "压力", "紧张", "压抑", "沮喪", "失落", "失眠", "难受",
         "心理", "心事", "内心", "人际关系", "亲子关系",
         "考试压力", "学习压力", "被孤立", "被欺负",
         "自卑", "不自信", "绝望", "無助",
@@ -78,6 +78,7 @@ class IntentRouter:
         "作业", "考试", "学习", "题目", "讲解", "辅导",
         "数学", "语文", "英语", "物理", "化学", "生物", "历史", "地理",
         "学习计划", "学习方法", "成绩", "复习", "预习",
+        "做作业", "题",
     ]
 
     # 知识查询关键词
@@ -121,7 +122,7 @@ class IntentRouter:
 
         # 3. 心理学检测
         psych_intent = self._check_psychology(message, context)
-        if psych_intent.confidence > 0.6:
+        if psych_intent.confidence > 0.4:
             self._cache[cache_key] = psych_intent
             return psych_intent
 
@@ -158,7 +159,7 @@ class IntentRouter:
             if kw in msg_lower:
                 # 检查是否有否定词
                 idx = msg_lower.find(kw)
-                prefix = msg_lower[max(0, idx - 20):idx]
+                prefix = msg_lower[max(0, idx - 20):idx + 1]
                 if any(neg in prefix for neg in negations):
                     continue
                 return Intent(
@@ -183,11 +184,16 @@ class IntentRouter:
         keyword_count = len(keyword_matches)
         keyword_confidence = min(keyword_count / 2, 0.9)
 
+        # 如果消息是知识查询类型（含"如何"/"为什么"/"什么是"），降低心理学置信度
+        knowledge_query_patterns = ["如何", "为什么", "什么是"]
+        if any(kp in msg_lower for kp in knowledge_query_patterns):
+            keyword_confidence *= 0.4
+
         # 情绪强度检测（如果有context）
         emotion_boost = 0.0
         if context and context.emotion_state:
             emotion_intensity = context.emotion_state.get("intensity", 0)
-            if emotion_intensity > 0.7:
+            if emotion_intensity >= 0.7:
                 emotion_boost = 0.15
 
         confidence = min(keyword_confidence + emotion_boost, 1.0)
@@ -218,8 +224,18 @@ class IntentRouter:
         keyword_matches = [kw for kw in self.EDUCATION_KEYWORDS if kw in msg_lower]
         keyword_count = len(keyword_matches)
 
-        if keyword_count >= 2:
-            confidence = min(keyword_count / 3, 0.9)
+        if keyword_count >= 1:
+            confidence = min(keyword_count * 0.6, 0.9)
+
+            # 如果消息是知识查询类型（含问题词），降低教育置信度
+            knowledge_query_words = ["如何", "为什么", "什么是"]
+            has_knowledge_prefix = any(kp in msg_lower for kp in knowledge_query_words)
+            # "怎么"作为疑问词也降低教育置信度，但"怎么做"（解题）除外
+            if not has_knowledge_prefix and "怎么" in msg_lower and "怎么做" not in msg_lower:
+                has_knowledge_prefix = True
+            if has_knowledge_prefix:
+                confidence *= 0.4
+
             return Intent(
                 primary=IntentType.EDUCATION,
                 confidence=confidence,
@@ -252,6 +268,9 @@ class IntentRouter:
 
         for pattern, base_conf in knowledge_patterns:
             if pattern in msg_lower:
+                # 排除"怎么样"这类口语化用法，以及"怎么做"（属于教育解题范畴）
+                if pattern == "怎么" and ("怎么样" in msg_lower or "怎么做" in msg_lower):
+                    continue
                 return Intent(
                     primary=IntentType.KNOWLEDGE_QUERY,
                     confidence=base_conf,
