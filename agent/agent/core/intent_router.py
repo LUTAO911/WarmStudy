@@ -48,7 +48,7 @@ class RouteContext:
 class IntentRouter:
     """
     意图路由器
-    
+
     判断逻辑：
     1. 危机关键词检测 → 最高优先级 → CRISIS
     2. 心理学关键词 + 情绪检测 → PSYCHOLOGY
@@ -86,6 +86,9 @@ class IntentRouter:
         "为什么", "原因", "如何", "怎样", "怎么办",
     ]
 
+    # 否定词列表（用于危机检测的否定判断）
+    CRISIS_NEGATIONS = ["不想", "不会", "没有想", "不是想", "开个玩笑", "说着玩", "别", "别想", "别以为"]
+
     def __init__(self, llm_provider=None):
         self.llm = llm_provider
         self._cache: Dict[str, Intent] = {}
@@ -98,11 +101,11 @@ class IntentRouter:
     ) -> Intent:
         """
         智能路由判断
-        
+
         Args:
             message: 用户消息
             context: 路由上下文（可选）
-            
+
         Returns:
             Intent: 意图识别结果
         """
@@ -121,7 +124,7 @@ class IntentRouter:
 
         # 3. 心理学检测
         psych_intent = self._check_psychology(message, context)
-        if psych_intent.confidence > 0.6:
+        if psych_intent.confidence > 0.5:
             self._cache[cache_key] = psych_intent
             return psych_intent
 
@@ -151,15 +154,13 @@ class IntentRouter:
         """危机检测"""
         msg_lower = message.lower()
 
-        # 否定词
-        negations = ["不想", "不会", "没有想", "不是想", "开个玩笑", "说着玩"]
-
         for kw in self.CRISIS_KEYWORDS:
             if kw in msg_lower:
-                # 检查是否有否定词
+                # 检查是否有否定词在关键词前面
                 idx = msg_lower.find(kw)
-                prefix = msg_lower[max(0, idx - 20):idx]
-                if any(neg in prefix for neg in negations):
+                prefix = msg_lower[max(0, idx - 10):idx + len(kw)]
+                # 如果否定词紧邻关键词，则不视为危机
+                if any(neg in prefix for neg in self.CRISIS_NEGATIONS):
                     continue
                 return Intent(
                     primary=IntentType.CRISIS_INTERVENTION,
@@ -181,7 +182,7 @@ class IntentRouter:
         # 关键词匹配
         keyword_matches = [kw for kw in self.PSYCHOLOGY_KEYWORDS if kw in msg_lower]
         keyword_count = len(keyword_matches)
-        keyword_confidence = min(keyword_count / 2, 0.9)
+        keyword_confidence = min(keyword_count / 1.5, 0.9)
 
         # 情绪强度检测（如果有context）
         emotion_boost = 0.0
@@ -218,8 +219,8 @@ class IntentRouter:
         keyword_matches = [kw for kw in self.EDUCATION_KEYWORDS if kw in msg_lower]
         keyword_count = len(keyword_matches)
 
-        if keyword_count >= 2:
-            confidence = min(keyword_count / 3, 0.9)
+        if keyword_count >= 1:
+            confidence = min(keyword_count / 2, 0.9)
             return Intent(
                 primary=IntentType.EDUCATION,
                 confidence=confidence,
