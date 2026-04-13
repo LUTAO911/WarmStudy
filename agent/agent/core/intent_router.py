@@ -87,7 +87,7 @@ class IntentRouter:
     ]
 
     # 否定词列表（用于危机检测的否定判断）
-    CRISIS_NEGATIONS = ["不想", "不会", "没有想", "不是想", "开个玩笑", "说着玩", "别", "别想", "别以为", "我没", "我不是"]
+    CRISIS_NEGATIONS = ["不想", "不会", "没有想", "不是想", "开个玩笑", "说着玩", "我没", "我不是"]
 
     # 通用聊天模式（不应被识别为知识查询）
     GENERAL_CHAT_PATTERNS = [
@@ -162,10 +162,9 @@ class IntentRouter:
 
         for kw in self.CRISIS_KEYWORDS:
             if kw in msg_lower:
-                # 检查是否有否定词在关键词前面（只看关键词之前的内容，不包含关键词本身）
+                # 检查是否有否定词在关键词前面（看关键词前面的全部内容）
                 idx = msg_lower.find(kw)
-                # 只取关键词之前的部分进行检查
-                prefix = msg_lower[max(0, idx - 10):idx]
+                prefix = msg_lower[:idx]  # 关键词之前的全部内容
                 if any(neg in prefix for neg in self.CRISIS_NEGATIONS):
                     continue
                 return Intent(
@@ -263,7 +262,7 @@ class IntentRouter:
             ("如何", 0.7),
             ("怎样", 0.6),
             ("怎么办", 0.6),
-            ("怎么", 0.5),  # 降低 "怎么" 的优先级，避免误匹配
+            ("怎么", 0.5),
             ("解释", 0.6),
             ("原理", 0.6),
         ]
