@@ -140,7 +140,7 @@ def _proxy_post(path: str, payload: dict):
         resp = requests.post(
             f"{AGENT_API_URL}{path}",
             json=payload,
-            timeout=60,
+            timeout=30,
         )
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
@@ -148,10 +148,11 @@ def _proxy_post(path: str, payload: dict):
             "status": "error",
             "error": {"code": "BACKEND_UNAVAILABLE", "message": "后端服务暂时不可用，请稍后重试"}
         }), 503
-    except Exception as exc:
+    except Exception:
+        app.logger.exception("Proxy error for path: %s", path)
         return jsonify({
             "status": "error",
-            "error": {"code": "PROXY_ERROR", "message": str(exc)}
+            "error": {"code": "PROXY_ERROR", "message": "请求处理失败，请稍后重试"}
         }), 500
 
 
@@ -183,8 +184,9 @@ def api_search():
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:
         return jsonify({"ok": False, "error": "后端服务暂时不可用"}), 503
-    except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
+    except Exception:
+        app.logger.exception("Search proxy error for query: %s", q)
+        return jsonify({"ok": False, "error": "搜索请求失败，请稍后重试"}), 500
 
 
 @app.route("/api/status")
