@@ -1,6 +1,5 @@
 const {
   loginByPhone,
-  loginByWechat,
   sendVerifyCode,
 } = require("../../utils/api.js");
 
@@ -87,31 +86,10 @@ Page({
       wx.showToast({ title: "请先同意用户协议", icon: "none" });
       return;
     }
-
-    wx.login({
-      success: (res) => {
-        if (res.code) {
-          // 调用后端登录接口
-          loginByWechat(res.code, selectedRole)
-            .then((result: any) => {
-              if (result.success) {
-                this.handleLoginSuccess(result, selectedRole);
-              } else {
-                wx.showToast({
-                  title: result.message || "登录失败",
-                  icon: "none",
-                });
-              }
-            })
-            .catch((err) => {
-              console.warn("微信登录接口不可用，回退到本地演示登录", err);
-              this.mockLogin(selectedRole);
-            });
-        }
-      },
-      fail: () => {
-        wx.showToast({ title: "微信登录失败", icon: "none" });
-      },
+    wx.showToast({
+      title: "演示版暂不开放微信登录，请使用手机号登录",
+      icon: "none",
+      duration: 2500,
     });
   },
 
