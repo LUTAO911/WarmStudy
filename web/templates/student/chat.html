@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}AI 对话 — 暖学帮{% endblock %}
+{% block body_class %}app-page student-theme{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  <!-- ── 侧边栏 ── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🌟</span>
+      <span class="brand-name">暖学帮</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('student_chat') }}" class="nav-item active">
+        <span class="nav-icon">💬</span><span>AI 对话</span>
+      </a>
+      <a href="{{ url_for('student_assessment') }}" class="nav-item">
+        <span class="nav-icon">📊</span><span>心理测评</span>
+      </a>
+      <a href="{{ url_for('student_library') }}" class="nav-item">
+        <span class="nav-icon">📚</span><span>知识库</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ user.name[0] if user.name else '我' }}</div>
+      <div class="user-info">
+        <p class="user-name">{{ user.name }}</p>
+        <p class="user-role">学生</p>
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="退出">⏏</a>
+    </div>
+  </aside>
+
+  <!-- ── 主内容 ── -->
+  <main class="main-content">
+    <!-- 顶部：Agent 信息 + 会话控制 -->
+    <header class="chat-header">
+      <div class="agent-info">
+        <div class="agent-avatar">🤖</div>
+        <div class="agent-meta">
+          <span class="agent-name" id="agent-name">暖暖</span>
+          <span class="agent-emotion" id="agent-emotion">😊 温暖</span>
+        </div>
+      </div>
+      <div class="chat-actions">
+        <button class="btn-ghost btn-sm" onclick="newSession()">＋ 新会话</button>
+        <button class="btn-ghost btn-sm" onclick="clearHistory()">🗑 清空</button>
+        <!-- Agent 选择 -->
+        <select class="agent-select" id="agent-select" onchange="changeAgent(this.value)">
+          <option value="default">暖暖 · 温暖贴心</option>
+          <option value="wise">智慧导师 · 睿智沉稳</option>
+          <option value="friendly">知心姐姐 · 亲切友善</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- 消息区 -->
+    <div class="message-list" id="message-list">
+      <div class="welcome-msg">
+        <div class="welcome-avatar">🌸</div>
+        <div class="welcome-bubble">
+          <p>你好！我是你的好朋友<strong>暖暖</strong> 🌟</p>
+          <p>也是一名专业的 AI 心理辅导老师。</p>
+          <p>有什么想聊的，尽管告诉我哦～</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 快捷问题 -->
+    <div class="quick-questions" id="quick-questions">
+      <button class="quick-btn" onclick="sendQuick(this)">今天心情怎么样？</button>
+      <button class="quick-btn" onclick="sendQuick(this)">最近学习压力大吗？</button>
+      <button class="quick-btn" onclick="sendQuick(this)">和同学相处得怎么样？</button>
+      <button class="quick-btn" onclick="sendQuick(this)">有什么开心的事想分享吗？</button>
+    </div>
+
+    <!-- 输入区 -->
+    <div class="input-area">
+      <textarea
+        id="chat-input"
+        class="chat-textarea"
+        placeholder="有什么想聊的，尽管告诉我哦～"
+        rows="1"
+        maxlength="500"
+        onkeydown="handleInputKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">发送</button>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SESSION_ID = "{{ user.session_id }}";
+const USER_NAME  = "{{ user.name }}";
+let isLoading    = false;
+let messageCount = 0;
+
+const agents = {
+  default:  { name: "暖暖",   emotion: "😊 温暖",  personality: "温暖贴心" },
+  wise:     { name: "智慧导师", emotion: "🧐 睿智", personality: "睿智沉稳" },
+  friendly: { name: "知心姐姐", emotion: "🥰 亲切", personality: "亲切友善" },
+};
+let currentAgent = "default";
+
+function changeAgent(val) {
+  currentAgent = val;
+  const a = agents[val];
+  document.getElementById("agent-name").textContent    = a.name;
+  document.getElementById("agent-emotion").textContent = a.emotion;
+}
+
+function autoResize(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 160) + "px";
+}
+
+function handleInputKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function newSession() {
+  if (!confirm("开始新会话？当前对话将被清空。")) return;
+  document.getElementById("message-list").innerHTML =
+    document.querySelector(".welcome-msg")?.outerHTML || "";
+  document.getElementById("quick-questions").style.display = "flex";
+  messageCount = 0;
+}
+
+function clearHistory() {
+  if (!confirm("确定清空所有消息吗？")) return;
+  document.getElementById("message-list").innerHTML = "";
+  document.getElementById("quick-questions").style.display = "flex";
+  messageCount = 0;
+}
+
+function sendQuick(btn) {
+  document.getElementById("chat-input").value = btn.textContent;
+  document.getElementById("quick-questions").style.display = "none";
+  sendMessage();
+}
+
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById("chat-input");
+  const text = input.value.trim();
+  if (!text) return;
+
+  document.getElementById("quick-questions").style.display = "none";
+  input.value = "";
+  input.style.height = "auto";
+
+  appendMessage("user", text);
+
+  isLoading = true;
+  const loadingEl = appendLoading();
+  document.getElementById("send-btn").disabled = true;
+
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: text,
+        session_id: SESSION_ID,
+        user_type: "student",
+        use_rag: true,
+        use_tools: true,
+      }),
+    });
+    const data = await resp.json();
+    loadingEl.remove();
+
+    if (data.status === "success" && data.data) {
+      appendMessage("ai", data.data.answer, data.data.emotion);
+    } else {
+      const errMsg = data.error?.message || "抱歉，我遇到了一些问题，请稍后再试～";
+      appendMessage("ai", errMsg);
+    }
+  } catch (err) {
+    loadingEl.remove();
+    appendMessage("ai", "网络连接失败，请检查您的网络后重试～");
+  } finally {
+    isLoading = false;
+    document.getElementById("send-btn").disabled = false;
+  }
+}
+
+function appendMessage(role, content, emotion) {
+  const list = document.getElementById("message-list");
+  const div  = document.createElement("div");
+  div.className = `message-wrapper ${role}`;
+
+  const agentInfo = agents[currentAgent];
+  const avatarHtml = role === "ai"
+    ? `<div class="msg-avatar ai-avatar">🤖</div>`
+    : `<div class="msg-avatar user-avatar-chat">${USER_NAME ? USER_NAME[0] : "我"}</div>`;
+
+  const emotionHtml = (role === "ai" && emotion)
+    ? `<div class="emotion-tag">${getEmotionIcon(emotion.label)} ${emotion.label || ""}</div>`
+    : "";
+
+  div.innerHTML = `
+    <div class="message-content">
+      ${role === "ai" ? avatarHtml : ""}
+      <div class="bubble-wrapper">
+        <div class="bubble ${role}-bubble">${escapeHtml(content).replace(/\n/g, "<br>")}</div>
+        ${emotionHtml}
+      </div>
+      ${role === "user" ? avatarHtml : ""}
+    </div>`;
+
+  list.appendChild(div);
+  list.scrollTop = list.scrollHeight;
+  messageCount++;
+  return div;
+}
+
+function appendLoading() {
+  const list = document.getElementById("message-list");
+  const div  = document.createElement("div");
+  div.className = "message-wrapper ai loading-msg";
+  div.innerHTML = `
+    <div class="message-content">
+      <div class="msg-avatar ai-avatar">🤖</div>
+      <div class="bubble ai-bubble">
+        <div class="typing-indicator">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>`;
+  list.appendChild(div);
+  list.scrollTop = list.scrollHeight;
+  return div;
+}
+
+function getEmotionIcon(label) {
+  const map = { "高兴": "😊", "快乐": "😄", "平静": "😌", "担忧": "😟",
+                "悲伤": "😢", "焦虑": "😰", "温暖": "🥰", "鼓励": "💪" };
+  return map[label] || "💙";
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+</script>
+{% endblock %}

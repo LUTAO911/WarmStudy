@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}知识库 — 暖学帮{% endblock %}
+{% block body_class %}app-page student-theme{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  <!-- ── 侧边栏 ── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🌟</span>
+      <span class="brand-name">暖学帮</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('student_chat') }}" class="nav-item">
+        <span class="nav-icon">💬</span><span>AI 对话</span>
+      </a>
+      <a href="{{ url_for('student_assessment') }}" class="nav-item">
+        <span class="nav-icon">📊</span><span>心理测评</span>
+      </a>
+      <a href="{{ url_for('student_library') }}" class="nav-item active">
+        <span class="nav-icon">📚</span><span>知识库</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ user.name[0] if user.name else '我' }}</div>
+      <div class="user-info">
+        <p class="user-name">{{ user.name }}</p>
+        <p class="user-role">学生</p>
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="退出">⏏</a>
+    </div>
+  </aside>
+
+  <!-- ── 主内容 ── -->
+  <main class="main-content library-main">
+    <div class="page-scroll">
+      <div class="library-header">
+        <h2 class="page-title">心理知识库</h2>
+        <p class="page-subtitle">{{ user.name }}的心理成长中心 🌸</p>
+      </div>
+
+      <!-- 搜索框 -->
+      <div class="search-wrap">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            placeholder="搜索心理知识、学习方法、情绪管理..."
+            onkeydown="if(event.key==='Enter') doSearch()"
+          />
+          <button class="search-btn" onclick="doSearch()">搜索</button>
+        </div>
+      </div>
+
+      <!-- 推荐标签 -->
+      <div class="tag-row" id="tag-row">
+        <button class="tag-btn" onclick="quickSearch(this)">学习焦虑</button>
+        <button class="tag-btn" onclick="quickSearch(this)">情绪管理</button>
+        <button class="tag-btn" onclick="quickSearch(this)">睡眠问题</button>
+        <button class="tag-btn" onclick="quickSearch(this)">人际关系</button>
+        <button class="tag-btn" onclick="quickSearch(this)">自我认知</button>
+        <button class="tag-btn" onclick="quickSearch(this)">压力缓解</button>
+        <button class="tag-btn" onclick="quickSearch(this)">家庭沟通</button>
+      </div>
+
+      <!-- 搜索结果 -->
+      <div id="search-results" class="search-results hidden">
+        <div class="results-header">
+          <span class="results-title">搜索结果</span>
+          <span class="results-count" id="results-count"></span>
+          <button class="btn-ghost btn-sm" onclick="clearResults()">清除</button>
+        </div>
+        <div id="results-list"></div>
+      </div>
+
+      <!-- 精选知识卡片（无搜索时显示） -->
+      <div id="featured-content">
+        <section class="card-section">
+          <h3 class="section-title">🌟 心理成长</h3>
+          <div class="psych-card-grid">
+            <div class="psych-feature-card" style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9)" onclick="quickSearch2('情绪管理方法')">
+              <span class="pfc-icon">😊</span>
+              <p class="pfc-title">情绪管理</p>
+              <p class="pfc-desc">学会调节情绪，保持心理平衡</p>
+              <span class="pfc-tag">推荐</span>
+            </div>
+            <div class="psych-feature-card" style="background:linear-gradient(135deg,#e3f2fd,#bbdefb)" onclick="quickSearch2('学习压力缓解')">
+              <span class="pfc-icon">📖</span>
+              <p class="pfc-title">学习压力</p>
+              <p class="pfc-desc">有效管理学习焦虑</p>
+              <span class="pfc-tag">热门</span>
+            </div>
+            <div class="psych-feature-card" style="background:linear-gradient(135deg,#fff3e0,#ffe0b2)" onclick="quickSearch2('人际交往技巧')">
+              <span class="pfc-icon">👫</span>
+              <p class="pfc-title">人际关系</p>
+              <p class="pfc-desc">建立健康的同伴关系</p>
+            </div>
+            <div class="psych-feature-card" style="background:linear-gradient(135deg,#fce4ec,#f8bbd0)" onclick="quickSearch2('自我认知提升')">
+              <span class="pfc-icon">💡</span>
+              <p class="pfc-title">自我认知</p>
+              <p class="pfc-desc">了解自己，发现潜能</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card-section">
+          <h3 class="section-title">📚 心理知识</h3>
+          <div class="knowledge-list" id="static-knowledge">
+            <div class="knowledge-item" onclick="quickSearch2('什么是焦虑')">
+              <div class="knowledge-cat">情绪</div>
+              <div class="knowledge-info">
+                <p class="ki-title">什么是焦虑？如何应对？</p>
+                <p class="ki-summary">焦虑是一种常见的情绪反应。了解焦虑的成因，学习简单有效的放松技巧……</p>
+                <p class="ki-meta">阅读 3 分钟</p>
+              </div>
+            </div>
+            <div class="knowledge-item" onclick="quickSearch2('如何提高专注力')">
+              <div class="knowledge-cat">学习</div>
+              <div class="knowledge-info">
+                <p class="ki-title">如何提高学习专注力</p>
+                <p class="ki-summary">分心是学习效率的大敌。这里有几个科学验证的方法帮助你保持专注……</p>
+                <p class="ki-meta">阅读 5 分钟</p>
+              </div>
+            </div>
+            <div class="knowledge-item" onclick="quickSearch2('改善睡眠质量')">
+              <div class="knowledge-cat">健康</div>
+              <div class="knowledge-info">
+                <p class="ki-title">改善睡眠质量的方法</p>
+                <p class="ki-summary">良好的睡眠对心理健康至关重要。了解睡眠卫生的基本原则……</p>
+                <p class="ki-meta">阅读 4 分钟</p>
+              </div>
+            </div>
+            <div class="knowledge-item" onclick="quickSearch2('与父母沟通技巧')">
+              <div class="knowledge-cat">家庭</div>
+              <div class="knowledge-info">
+                <p class="ki-title">和父母更好地沟通</p>
+                <p class="ki-summary">青春期的亲子沟通有时充满挑战。学习有效沟通的技巧，让家庭关系更和谐……</p>
+                <p class="ki-meta">阅读 4 分钟</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 紧急求助 -->
+        <div class="crisis-banner">
+          <span class="crisis-icon">🆘</span>
+          <div class="crisis-info">
+            <p class="crisis-title">需要帮助？</p>
+            <p class="crisis-desc">如果你感到心理困扰，请告诉我们或寻求专业帮助</p>
+          </div>
+          <a href="{{ url_for('student_chat') }}" class="crisis-arrow">去对话 ›</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function doSearch() {
+  const q = document.getElementById("search-input").value.trim();
+  if (!q) return;
+  showResults(q);
+}
+
+function quickSearch(btn) {
+  document.getElementById("search-input").value = btn.textContent;
+  showResults(btn.textContent);
+}
+
+function quickSearch2(q) {
+  document.getElementById("search-input").value = q;
+  showResults(q);
+}
+
+async function showResults(q) {
+  const resultBox   = document.getElementById("search-results");
+  const resultsList = document.getElementById("results-list");
+  const countEl     = document.getElementById("results-count");
+  const featured    = document.getElementById("featured-content");
+
+  resultBox.classList.remove("hidden");
+  featured.classList.add("hidden");
+  resultsList.innerHTML = '<div class="loading-text">🔍 正在搜索...</div>';
+  countEl.textContent   = "";
+
+  try {
+    const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}&n=8`);
+    const data = await resp.json();
+
+    if (data.ok && data.results && data.results.length > 0) {
+      countEl.textContent = `找到 ${data.results.length} 条结果`;
+      resultsList.innerHTML = data.results.map(r => `
+        <div class="result-item">
+          <div class="result-header">
+            <span class="result-source">${escapeHtml(r.source || '知识库')}</span>
+            ${r.similarity ? `<span class="result-score">相关度 ${(r.similarity * 100).toFixed(0)}%</span>` : ""}
+          </div>
+          <p class="result-content">${escapeHtml(r.content || "")}</p>
+          ${r.page ? `<p class="result-meta">第 ${r.page} 页</p>` : ""}
+        </div>
+      `).join("");
+    } else if (data.ok) {
+      countEl.textContent = "0 条结果";
+      resultsList.innerHTML = `
+        <div class="empty-results">
+          <span class="empty-icon">📭</span>
+          <p>暂时没有找到相关内容，试试换个关键词吧</p>
+          <p class="empty-hint">或者直接去「AI 对话」问问我～</p>
+        </div>`;
+    } else {
+      resultsList.innerHTML = `<div class="error-text">搜索失败：${escapeHtml(data.error || "未知错误")}</div>`;
+    }
+  } catch (e) {
+    resultsList.innerHTML = `<div class="error-text">网络错误，请稍后重试</div>`;
+  }
+}
+
+function clearResults() {
+  document.getElementById("search-results").classList.add("hidden");
+  document.getElementById("featured-content").classList.remove("hidden");
+  document.getElementById("search-input").value = "";
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+                    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+</script>
+{% endblock %}

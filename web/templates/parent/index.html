@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}家长中心 — 暖学帮{% endblock %}
+{% block body_class %}app-page parent-theme{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  <!-- ── 侧边栏 ── -->
+  <aside class="sidebar sidebar-parent">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🌟</span>
+      <span class="brand-name">暖学帮</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('parent_dashboard') }}" class="nav-item active">
+        <span class="nav-icon">🏠</span><span>家长中心</span>
+      </a>
+      <a href="{{ url_for('parent_chat') }}" class="nav-item">
+        <span class="nav-icon">💬</span><span>AI 助手</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar parent-avatar">{{ user.name[0] if user.name else '家' }}</div>
+      <div class="user-info">
+        <p class="user-name">{{ user.name }}</p>
+        <p class="user-role">家长</p>
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="退出">⏏</a>
+    </div>
+  </aside>
+
+  <!-- ── 主内容 ── -->
+  <main class="main-content parent-main">
+    <div class="page-scroll">
+      <!-- 头部 -->
+      <div class="parent-header">
+        <div class="child-profile">
+          <div class="child-avatar-big">李</div>
+          <div class="child-detail">
+            <p class="child-name-big">孩子 · 七年级三班</p>
+            <p class="child-meta">学号：2024001</p>
+          </div>
+        </div>
+        <div class="header-right-col">
+          <div class="header-date" id="today-date"></div>
+        </div>
+      </div>
+
+      <!-- 打卡汇总 -->
+      <div class="checkin-summary-row">
+        <div class="ci-summary-item good">
+          <span class="ci-sum-icon">😊</span>
+          <span class="ci-sum-label">情绪</span>
+          <span class="ci-sum-val">4/5</span>
+        </div>
+        <div class="ci-summary-item good">
+          <span class="ci-sum-icon">📚</span>
+          <span class="ci-sum-label">学习</span>
+          <span class="ci-sum-val">3/5</span>
+        </div>
+        <div class="ci-summary-item warn">
+          <span class="ci-sum-icon">😴</span>
+          <span class="ci-sum-label">睡眠</span>
+          <span class="ci-sum-val">2/5</span>
+        </div>
+        <div class="ci-summary-item good">
+          <span class="ci-sum-icon">👫</span>
+          <span class="ci-sum-label">社交</span>
+          <span class="ci-sum-val">4/5</span>
+        </div>
+      </div>
+
+      <!-- AI 建议 -->
+      <div class="ai-advice-card" onclick="window.location.href='{{ url_for('parent_chat') }}'">
+        <div class="ai-advice-header-row">
+          <span class="ai-advice-icon">💡</span>
+          <span class="ai-advice-title">AI 今日建议</span>
+          <span class="ai-advice-arrow">›</span>
+        </div>
+        <p class="ai-advice-text" id="ai-advice-text">
+          孩子今天情绪状态良好，睡眠略显不足。建议今晚提醒孩子早点休息，保证充足睡眠有助于学习效率和心理健康。
+        </p>
+      </div>
+
+      <!-- 心理画像 -->
+      <section class="card-section">
+        <div class="section-header-row">
+          <h3 class="section-title">最近心理画像</h3>
+          <span class="section-tag">参考值</span>
+        </div>
+        <div class="radar-container">
+          <canvas id="radar-canvas" width="220" height="220"></canvas>
+          <div class="radar-legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#f44336"></span><span>学习焦虑</span><strong>2</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#e91e63"></span><span>对人焦虑</span><strong>1</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#9c27b0"></span><span>孤独倾向</span><strong>1</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#ff9800"></span><span>自责倾向</span><strong>2</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#2196f3"></span><span>过敏倾向</span><strong>1</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#00bcd4"></span><span>身体症状</span><strong>1</strong></div>
+            <p class="legend-note">原始分，越低越健康</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 本周打卡 -->
+      <section class="card-section">
+        <div class="section-header-row">
+          <h3 class="section-title">本周打卡</h3>
+        </div>
+        <div class="week-calendar" id="week-calendar"></div>
+        <div class="week-legend-row">
+          <div class="wl-item"><div class="wl-dot good"></div><span>状态良好</span></div>
+          <div class="wl-item"><div class="wl-dot warn"></div><span>需要关注</span></div>
+          <div class="wl-item"><div class="wl-dot none"></div><span>未打卡</span></div>
+        </div>
+      </section>
+
+      <!-- 成绩趋势 -->
+      <section class="card-section">
+        <div class="section-header-row">
+          <h3 class="section-title">成绩趋势</h3>
+        </div>
+        <div class="grade-list">
+          <div class="grade-item">
+            <div class="grade-left">
+              <span class="grade-subject">数学</span>
+              <span class="grade-date">2024-04-10</span>
+            </div>
+            <div class="grade-bar-wrap">
+              <div class="grade-bar-bg">
+                <div class="grade-bar-fill" style="width:88%;background:#00C853"></div>
+              </div>
+            </div>
+            <span class="grade-score" style="color:#00C853">88分</span>
+          </div>
+          <div class="grade-item">
+            <div class="grade-left">
+              <span class="grade-subject">语文</span>
+              <span class="grade-date">2024-04-10</span>
+            </div>
+            <div class="grade-bar-wrap">
+              <div class="grade-bar-bg">
+                <div class="grade-bar-fill" style="width:76%;background:#FF9500"></div>
+              </div>
+            </div>
+            <span class="grade-score" style="color:#FF9500">76分</span>
+          </div>
+          <div class="grade-item">
+            <div class="grade-left">
+              <span class="grade-subject">英语</span>
+              <span class="grade-date">2024-04-10</span>
+            </div>
+            <div class="grade-bar-wrap">
+              <div class="grade-bar-bg">
+                <div class="grade-bar-fill" style="width:92%;background:#00C853"></div>
+              </div>
+            </div>
+            <span class="grade-score" style="color:#00C853">92分</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 测评报告 -->
+      <section class="card-section">
+        <div class="section-header-row">
+          <h3 class="section-title">📋 测评报告</h3>
+        </div>
+        <div class="report-card-latest">
+          <div class="report-card-header-row">
+            <span class="report-tag green">正常</span>
+            <span class="report-date">2024-04-08</span>
+          </div>
+          <p class="report-summary">本次心理健康综合评估显示孩子总体状态良好，学习焦虑略高，建议适当减轻作业压力。</p>
+          <div class="report-score-row">
+            <span class="report-score-label">综合得分</span>
+            <span class="report-score">85</span>
+            <span class="report-score-max">/100</span>
+          </div>
+        </div>
+      </section>
+
+      <div style="height:32px"></div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const now = new Date();
+  document.getElementById("today-date").textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+  buildWeekCalendar();
+  drawRadar([2,1,1,2,1,1]);
+});
+
+function buildWeekCalendar() {
+  const days = ["一","二","三","四","五","六","日"];
+  const mockData = [
+    { done:true, good:true },
+    { done:true, good:true },
+    { done:true, good:false },
+    { done:true, good:true },
+    { done:false },
+    { done:false },
+    { done:false },
+  ];
+  const cal = document.getElementById("week-calendar");
+  const headerHtml = days.map(d => `<div class="wc-label">${d}</div>`).join("");
+  const dotHtml = mockData.map(d => `
+    <div class="wc-dot-wrap">
+      <div class="wc-dot ${d.done ? (d.good ? 'good' : 'warn') : 'none'}"></div>
+      <span class="wc-emoji">${d.done ? (d.good ? '😊' : '😔') : '·'}</span>
+    </div>`).join("");
+  cal.innerHTML = headerHtml + dotHtml;
+}
+
+function drawRadar(scores) {
+  const canvas = document.getElementById("radar-canvas");
+  const ctx = canvas.getContext("2d");
+  const cx = 110, cy = 110, R = 80;
+  const colors = ["#f44336","#e91e63","#9c27b0","#ff9800","#2196f3","#00bcd4"];
+  const labels = ["学习焦虑","对人焦虑","孤独倾向","自责倾向","过敏倾向","身体症状"];
+  const n = 6, maxScore = 10;
+
+  ctx.clearRect(0, 0, 220, 220);
+  // 背景环
+  for (let ring = 1; ring <= 4; ring++) {
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const angle = (Math.PI*2*i/n) - Math.PI/2;
+      const r = R*ring/4;
+      i===0 ? ctx.moveTo(cx+r*Math.cos(angle), cy+r*Math.sin(angle))
+            : ctx.lineTo(cx+r*Math.cos(angle), cy+r*Math.sin(angle));
+    }
+    ctx.closePath();
+    ctx.strokeStyle = "rgba(0,0,0,0.08)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  // 轴线
+  for (let i=0;i<n;i++) {
+    const angle=(Math.PI*2*i/n)-Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+R*Math.cos(angle), cy+R*Math.sin(angle));
+    ctx.strokeStyle="rgba(0,0,0,0.1)";ctx.lineWidth=1;ctx.stroke();
+  }
+  // 数据面
+  ctx.beginPath();
+  for (let i=0;i<n;i++) {
+    const angle=(Math.PI*2*i/n)-Math.PI/2;
+    const r=R*Math.min(scores[i]/maxScore,1);
+    i===0 ? ctx.moveTo(cx+r*Math.cos(angle),cy+r*Math.sin(angle))
+          : ctx.lineTo(cx+r*Math.cos(angle),cy+r*Math.sin(angle));
+  }
+  ctx.closePath();
+  ctx.fillStyle="rgba(255,149,0,0.15)";ctx.fill();
+  ctx.strokeStyle="#FF9500";ctx.lineWidth=2;ctx.stroke();
+  // 数据点
+  for (let i=0;i<n;i++) {
+    const angle=(Math.PI*2*i/n)-Math.PI/2;
+    const r=R*Math.min(scores[i]/maxScore,1);
+    ctx.beginPath();
+    ctx.arc(cx+r*Math.cos(angle),cy+r*Math.sin(angle),4,0,Math.PI*2);
+    ctx.fillStyle=colors[i];ctx.fill();
+  }
+  // 标签
+  ctx.font="11px 'Noto Sans SC',sans-serif";ctx.fillStyle="#555";ctx.textAlign="center";
+  for (let i=0;i<n;i++) {
+    const angle=(Math.PI*2*i/n)-Math.PI/2;
+    ctx.fillText(labels[i], cx+(R+18)*Math.cos(angle), cy+(R+18)*Math.sin(angle)+4);
+  }
+}
+</script>
+{% endblock %}

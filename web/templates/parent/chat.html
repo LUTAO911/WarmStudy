@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}AI 助手 — 暖学帮{% endblock %}
+{% block body_class %}app-page parent-theme{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  <!-- ── 侧边栏 ── -->
+  <aside class="sidebar sidebar-parent">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🌟</span>
+      <span class="brand-name">暖学帮</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('parent_dashboard') }}" class="nav-item">
+        <span class="nav-icon">🏠</span><span>家长中心</span>
+      </a>
+      <a href="{{ url_for('parent_chat') }}" class="nav-item active">
+        <span class="nav-icon">💬</span><span>AI 助手</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar parent-avatar">{{ user.name[0] if user.name else '家' }}</div>
+      <div class="user-info">
+        <p class="user-name">{{ user.name }}</p>
+        <p class="user-role">家长</p>
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="退出">⏏</a>
+    </div>
+  </aside>
+
+  <!-- ── 主内容 ── -->
+  <main class="main-content">
+    <header class="chat-header">
+      <div class="agent-info">
+        <div class="agent-avatar parent-agent-avatar">👨‍💼</div>
+        <div class="agent-meta">
+          <span class="agent-name">家长顾问</span>
+          <span class="agent-emotion">💼 专业</span>
+        </div>
+      </div>
+      <div class="chat-actions">
+        <button class="btn-ghost btn-sm" onclick="newSession()">＋ 新会话</button>
+        <button class="btn-ghost btn-sm" onclick="clearHistory()">🗑 清空</button>
+      </div>
+    </header>
+
+    <div class="message-list" id="message-list">
+      <div class="welcome-msg">
+        <div class="welcome-avatar">👨‍💼</div>
+        <div class="welcome-bubble">
+          <p>您好！我是您的 AI 家长顾问 💼</p>
+          <p>我可以帮您：</p>
+          <ul>
+            <li>解读孩子的心理测评报告</li>
+            <li>提供亲子沟通建议</li>
+            <li>分析孩子的情绪变化</li>
+            <li>解答家庭教育问题</li>
+          </ul>
+          <p>有什么问题，请尽管问我～</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="quick-questions" id="quick-questions">
+      <button class="quick-btn parent-quick-btn" onclick="sendQuick(this)">孩子最近睡眠不好怎么办？</button>
+      <button class="quick-btn parent-quick-btn" onclick="sendQuick(this)">如何帮助孩子缓解考试焦虑？</button>
+      <button class="quick-btn parent-quick-btn" onclick="sendQuick(this)">孩子不愿和我沟通怎么办？</button>
+      <button class="quick-btn parent-quick-btn" onclick="sendQuick(this)">如何解读孩子的心理测评结果？</button>
+    </div>
+
+    <div class="input-area">
+      <textarea
+        id="chat-input"
+        class="chat-textarea"
+        placeholder="请输入您的问题..."
+        rows="1"
+        maxlength="500"
+        onkeydown="handleInputKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button class="send-btn send-btn-parent" id="send-btn" onclick="sendMessage()">发送</button>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SESSION_ID = "{{ user.session_id }}_parent";
+const USER_NAME  = "{{ user.name }}";
+let isLoading    = false;
+
+function autoResize(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 160) + "px";
+}
+function handleInputKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+function newSession() {
+  if (!confirm("开始新会话？")) return;
+  document.getElementById("message-list").innerHTML =
+    document.querySelector(".welcome-msg")?.outerHTML || "";
+  document.getElementById("quick-questions").style.display = "flex";
+}
+function clearHistory() {
+  if (!confirm("确定清空所有消息吗？")) return;
+  document.getElementById("message-list").innerHTML = "";
+  document.getElementById("quick-questions").style.display = "flex";
+}
+function sendQuick(btn) {
+  document.getElementById("chat-input").value = btn.textContent;
+  document.getElementById("quick-questions").style.display = "none";
+  sendMessage();
+}
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById("chat-input");
+  const text = input.value.trim();
+  if (!text) return;
+  document.getElementById("quick-questions").style.display = "none";
+  input.value = ""; input.style.height = "auto";
+  appendMessage("user", text);
+  isLoading = true;
+  const loadingEl = appendLoading();
+  document.getElementById("send-btn").disabled = true;
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, session_id: SESSION_ID, user_type: "parent" }),
+    });
+    const data = await resp.json();
+    loadingEl.remove();
+    if (data.status === "success" && data.data) {
+      appendMessage("ai", data.data.answer);
+    } else {
+      appendMessage("ai", data.error?.message || "抱歉，遇到了一些问题，请稍后重试");
+    }
+  } catch {
+    loadingEl.remove();
+    appendMessage("ai", "网络连接失败，请检查后重试");
+  } finally {
+    isLoading = false;
+    document.getElementById("send-btn").disabled = false;
+  }
+}
+function appendMessage(role, content) {
+  const list = document.getElementById("message-list");
+  const div  = document.createElement("div");
+  div.className = `message-wrapper ${role}`;
+  const avatarHtml = role === "ai"
+    ? `<div class="msg-avatar ai-avatar">👨‍💼</div>`
+    : `<div class="msg-avatar user-avatar-chat">${USER_NAME ? USER_NAME[0] : "家"}</div>`;
+  div.innerHTML = `
+    <div class="message-content">
+      ${role === "ai" ? avatarHtml : ""}
+      <div class="bubble-wrapper">
+        <div class="bubble ${role}-bubble">${escapeHtml(content).replace(/\n/g,"<br>")}</div>
+      </div>
+      ${role === "user" ? avatarHtml : ""}
+    </div>`;
+  list.appendChild(div);
+  list.scrollTop = list.scrollHeight;
+  return div;
+}
+function appendLoading() {
+  const list = document.getElementById("message-list");
+  const div  = document.createElement("div");
+  div.className = "message-wrapper ai loading-msg";
+  div.innerHTML = `
+    <div class="message-content">
+      <div class="msg-avatar ai-avatar">👨‍💼</div>
+      <div class="bubble ai-bubble">
+        <div class="typing-indicator"><span></span><span></span><span></span></div>
+      </div>
+    </div>`;
+  list.appendChild(div);
+  list.scrollTop = list.scrollHeight;
+  return div;
+}
+function escapeHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+</script>
+{% endblock %}

@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+{% block title %}心理测评 — 暖学帮{% endblock %}
+{% block body_class %}app-page student-theme{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+  <!-- ── 侧边栏 ── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🌟</span>
+      <span class="brand-name">暖学帮</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('student_chat') }}" class="nav-item">
+        <span class="nav-icon">💬</span><span>AI 对话</span>
+      </a>
+      <a href="{{ url_for('student_assessment') }}" class="nav-item active">
+        <span class="nav-icon">📊</span><span>心理测评</span>
+      </a>
+      <a href="{{ url_for('student_library') }}" class="nav-item">
+        <span class="nav-icon">📚</span><span>知识库</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ user.name[0] if user.name else '我' }}</div>
+      <div class="user-info">
+        <p class="user-name">{{ user.name }}</p>
+        <p class="user-role">学生</p>
+      </div>
+      <a href="{{ url_for('logout') }}" class="logout-btn" title="退出">⏏</a>
+    </div>
+  </aside>
+
+  <!-- ── 主内容 ── -->
+  <main class="main-content assessment-main">
+    <div class="page-scroll">
+      <!-- 头部 -->
+      <div class="assessment-header">
+        <div class="header-title-group">
+          <h2 class="page-title">心测站</h2>
+          <p class="page-subtitle">专业心理追踪</p>
+        </div>
+        <div class="header-date" id="today-date"></div>
+      </div>
+
+      <!-- 打卡进度 -->
+      <div class="checkin-progress-wrap">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="checkin-progress-fill"></div>
+        </div>
+        <span class="progress-label" id="checkin-progress-label">今日打卡 0/4</span>
+      </div>
+
+      <!-- 今日打卡 -->
+      <section class="card-section">
+        <h3 class="section-title">今日打卡</h3>
+        <div class="checkin-grid">
+          <div class="checkin-card" id="ci-emotion" onclick="openCheckin('emotion')">
+            <span class="ci-icon">😊</span>
+            <span class="ci-label">情绪</span>
+            <span class="ci-value" id="cv-emotion">未打卡</span>
+            <div class="ci-dot" id="cd-emotion"></div>
+          </div>
+          <div class="checkin-card" id="ci-sleep" onclick="openCheckin('sleep')">
+            <span class="ci-icon">😴</span>
+            <span class="ci-label">睡眠</span>
+            <span class="ci-value" id="cv-sleep">未打卡</span>
+            <div class="ci-dot" id="cd-sleep"></div>
+          </div>
+          <div class="checkin-card" id="ci-study" onclick="openCheckin('study')">
+            <span class="ci-icon">📚</span>
+            <span class="ci-label">学习</span>
+            <span class="ci-value" id="cv-study">未打卡</span>
+            <div class="ci-dot" id="cd-study"></div>
+          </div>
+          <div class="checkin-card" id="ci-social" onclick="openCheckin('social')">
+            <span class="ci-icon">👫</span>
+            <span class="ci-label">社交</span>
+            <span class="ci-value" id="cv-social">未打卡</span>
+            <div class="ci-dot" id="cd-social"></div>
+          </div>
+        </div>
+        <div class="checkin-tip hidden" id="checkin-tip">
+          💡 今日打卡完成！建议去「AI 对话」查看个性化建议
+        </div>
+      </section>
+
+      <!-- 心理测评量表 -->
+      <section class="card-section">
+        <div class="section-header-row">
+          <h3 class="section-title">心理测评</h3>
+          <span class="section-tag">专业量表</span>
+        </div>
+        <div class="test-list">
+          <div class="test-item" onclick="startTest('weekly')">
+            <div class="test-icon-wrap" style="background:#e8f5e9">📊</div>
+            <div class="test-info">
+              <p class="test-name">心理健康综合评估</p>
+              <p class="test-meta">MHT量表改编 · 8道题 · 约3分钟</p>
+              <p class="test-source">来源：华东师范大学MHT标准化量表</p>
+            </div>
+            <span class="test-status" id="ts-weekly">未完成</span>
+          </div>
+          <div class="test-item" onclick="startTest('pressure')">
+            <div class="test-icon-wrap" style="background:#fff3e0">⚖️</div>
+            <div class="test-info">
+              <p class="test-name">感知压力评估</p>
+              <p class="test-meta">PSS-10量表改编 · 10道题 · 约2分钟</p>
+              <p class="test-source">来源：国际通用PSS压力量表中文版</p>
+            </div>
+            <span class="test-status" id="ts-pressure">未完成</span>
+          </div>
+          <div class="test-item" onclick="startTest('communication')">
+            <div class="test-icon-wrap" style="background:#e3f2fd">💬</div>
+            <div class="test-info">
+              <p class="test-name">亲子沟通质量评估</p>
+              <p class="test-meta">亲子沟通量表改编 · 10道题 · 约2分钟</p>
+              <p class="test-source">来源：标准化亲子沟通量表</p>
+            </div>
+            <span class="test-status" id="ts-communication">未完成</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 心理画像雷达 -->
+      <section class="card-section">
+        <h3 class="section-title">最近心理画像</h3>
+        <div class="radar-container" id="radar-container">
+          <canvas id="radar-canvas" width="240" height="240"></canvas>
+          <div class="radar-legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#f44336"></span><span>学习焦虑</span><strong id="rs-0">—</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#e91e63"></span><span>对人焦虑</span><strong id="rs-1">—</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#9c27b0"></span><span>孤独倾向</span><strong id="rs-2">—</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#ff9800"></span><span>自责倾向</span><strong id="rs-3">—</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#2196f3"></span><span>过敏倾向</span><strong id="rs-4">—</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#00bcd4"></span><span>身体症状</span><strong id="rs-5">—</strong></div>
+            <p class="legend-note">原始分，越低越健康</p>
+          </div>
+        </div>
+        <div class="risk-alert hidden" id="risk-alert">
+          ⚠️ 检测到多项偏高指标，建议与AI朋朋深入聊聊
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ── 打卡弹窗 ── -->
+<div class="modal-overlay hidden" id="checkin-modal">
+  <div class="modal-mask" onclick="closeCheckin()"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title" id="ci-modal-title">情绪打卡</span>
+      <button class="modal-close" onclick="closeCheckin()">×</button>
+    </div>
+    <div class="ci-options" id="ci-options"></div>
+    <button class="btn-primary" onclick="submitCheckin()">确认打卡</button>
+  </div>
+</div>
+
+<!-- ── 测评弹窗 ── -->
+<div class="modal-overlay hidden" id="test-modal">
+  <div class="modal-mask" onclick="closeTest()"></div>
+  <div class="modal-card test-modal-card">
+    <div class="modal-header">
+      <div>
+        <span class="modal-title" id="test-modal-title"></span>
+        <span class="modal-subtitle" id="test-modal-source"></span>
+      </div>
+      <button class="modal-close" onclick="closeTest()">×</button>
+    </div>
+    <div class="test-progress-bar-bg">
+      <div class="test-progress-fill" id="test-progress-fill"></div>
+    </div>
+    <p class="test-progress-text" id="test-progress-text"></p>
+    <div class="test-question-card">
+      <span class="question-num" id="q-num"></span>
+      <p class="question-text" id="q-text"></p>
+    </div>
+    <div class="test-options" id="test-options"></div>
+    <button class="btn-primary" id="btn-next" onclick="nextQuestion()" disabled>下一题 ›</button>
+  </div>
+</div>
+
+<!-- ── 测评结果弹窗 ── -->
+<div class="modal-overlay hidden" id="result-modal">
+  <div class="modal-mask" onclick="closeResult()"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">测评完成 🎉</span>
+      <button class="modal-close" onclick="closeResult()">×</button>
+    </div>
+    <div class="result-body" id="result-body"></div>
+    <button class="btn-primary" onclick="closeResult()">知道了</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── 打卡数据 ──
+const CHECKIN_OPTIONS = {
+  emotion: { title: "情绪打卡", opts: ["😢 很差", "😔 不太好", "😐 一般", "😊 还不错", "🥰 很棒"] },
+  sleep:   { title: "睡眠打卡", opts: ["😫 很差", "😴 不够",  "😐 一般", "😌 良好",   "🌙 很好"] },
+  study:   { title: "学习打卡", opts: ["😞 很差", "😟 困难",  "😐 一般", "📖 不错",   "🎯 很好"] },
+  social:  { title: "社交打卡", opts: ["😰 很差", "😕 一般",  "😐 还行", "😊 良好",   "🎉 很好"] },
+};
+const checkin = { emotion: null, sleep: null, study: null, social: null };
+let checkinTarget = null;
+let selectedOption = null;
+
+function updateCheckinUI() {
+  let done = 0;
+  Object.keys(checkin).forEach(k => {
+    if (checkin[k] !== null) {
+      done++;
+      document.getElementById(`cv-${k}`).textContent = checkin[k];
+      document.getElementById(`ci-${k}`).classList.add("done");
+      document.getElementById(`cd-${k}`).classList.add("on");
+    }
+  });
+  const pct = (done / 4) * 100;
+  document.getElementById("checkin-progress-fill").style.width = pct + "%";
+  document.getElementById("checkin-progress-label").textContent =
+    done === 4 ? "今日打卡完成 ✓" : `今日打卡 ${done}/4`;
+  document.getElementById("checkin-tip").classList.toggle("hidden", done < 4);
+}
+
+function openCheckin(type) {
+  checkinTarget = type;
+  selectedOption = null;
+  const cfg = CHECKIN_OPTIONS[type];
+  document.getElementById("ci-modal-title").textContent = cfg.title;
+  const optContainer = document.getElementById("ci-options");
+  optContainer.innerHTML = cfg.opts.map((o, i) =>
+    `<button class="ci-opt-btn" onclick="selectCiOpt(this, ${i})">${o}</button>`
+  ).join("");
+  document.getElementById("checkin-modal").classList.remove("hidden");
+}
+
+function selectCiOpt(btn, idx) {
+  document.querySelectorAll(".ci-opt-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedOption = btn.textContent;
+}
+
+function submitCheckin() {
+  if (!selectedOption) { alert("请选择一个选项"); return; }
+  checkin[checkinTarget] = selectedOption;
+  updateCheckinUI();
+  closeCheckin();
+}
+
+function closeCheckin() {
+  document.getElementById("checkin-modal").classList.add("hidden");
+}
+
+// ── 测评量表数据 ──
+const TESTS = {
+  weekly: {
+    name: "心理健康综合评估",
+    source: "MHT量表改编",
+    questions: [
+      { text: "我在学习上经常感到紧张，怕考试考不好", options: ["从不", "偶尔", "有时", "经常", "总是"] },
+      { text: "我怕被老师叫到发言或回答问题", options: ["从不", "偶尔", "有时", "经常", "总是"] },
+      { text: "我在学校里常常感到孤独，没有朋友", options: ["从不", "偶尔", "有时", "经常", "总是"] },
+      { text: "当我做错事时，我会对自己非常失望", options: ["从不", "偶尔", "有时", "经常", "总是"] },
+      { text: "我对周围的事物特别敏感，容易受到伤害", options: ["从不", "偶尔", "有时", "经常", "总是"] },
+      { text: "我常常头疼、胃痛等身体不舒服", options: ["从不", "偶尔", "有时", "经常", "总是"] },
+      { text: "我担心家里会发生什么不好的事", options: ["从不", "偶尔", "有时", "经常", "总是"] },
+      { text: "在人多的地方我会感到不自在", options: ["从不", "偶尔", "有时", "经常", "总是"] },
+    ],
+    labels: ["学习焦虑", "对人焦虑", "孤独倾向", "自责倾向", "过敏倾向", "身体症状"],
+    mapScore: (answers) => {
+      // 每道题1-5分，分组到各维度
+      const scores = [0,0,0,0,0,0];
+      const mapping = [0,1,2,3,4,5,0,1]; // 题目→维度
+      answers.forEach((a,i) => { scores[mapping[i]] += a; });
+      return scores;
+    },
+  },
+  pressure: {
+    name: "感知压力评估",
+    source: "PSS-10量表改编",
+    questions: [
+      { text: "上个月，你有多频繁地因为意外情况而感到不安？", options: ["从不", "几乎不", "有时", "相当频繁", "非常频繁"] },
+      { text: "上个月，你有多频繁地感到无法控制生活中的重要事情？", options: ["从不", "几乎不", "有时", "相当频繁", "非常频繁"] },
+      { text: "上个月，你有多频繁地感到神经紧张和压力？", options: ["从不", "几乎不", "有时", "相当频繁", "非常频繁"] },
+      { text: "上个月，你有多频繁地确信自己有能力处理个人问题？", options: ["非常频繁", "相当频繁", "有时", "几乎不", "从不"] },
+      { text: "上个月，你有多频繁地感到事情进行得很顺利？", options: ["非常频繁", "相当频繁", "有时", "几乎不", "从不"] },
+      { text: "上个月，你有多频繁地发现你无法完成所有需要做的事？", options: ["从不", "几乎不", "有时", "相当频繁", "非常频繁"] },
+      { text: "上个月，你有多频繁地能够控制生活中令你烦恼的事？", options: ["非常频繁", "相当频繁", "有时", "几乎不", "从不"] },
+      { text: "上个月，你有多频繁地感到你能掌控事情？", options: ["非常频繁", "相当频繁", "有时", "几乎不", "从不"] },
+      { text: "上个月，你有多频繁地因为超出自己控制能力的事情而感到愤怒？", options: ["从不", "几乎不", "有时", "相当频繁", "非常频繁"] },
+      { text: "上个月，你有多频繁地感到困难已经积累到无法解决的程度？", options: ["从不", "几乎不", "有时", "相当频繁", "非常频繁"] },
+    ],
+    mapScore: (answers) => {
+      const total = answers.reduce((s,a) => s+a, 0);
+      const level = total <= 13 ? "低压力" : total <= 26 ? "中等压力" : "高压力";
+      return { total, level };
+    },
+  },
+  communication: {
+    name: "亲子沟通质量评估",
+    source: "标准化亲子沟通量表",
+    questions: [
+      { text: "我可以和父母讨论我在学校遇到的问题", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+      { text: "父母尊重我的意见", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+      { text: "父母经常听我说话", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+      { text: "我可以告诉父母我真实的想法", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+      { text: "父母对我的问题感兴趣", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+      { text: "和父母交流让我感到轻松", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+      { text: "父母理解我的感受", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+      { text: "如果我有问题，我可以找父母帮忙", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+      { text: "父母对我的想法做出积极的回应", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+      { text: "我和父母之间有良好的沟通", options: ["完全不同意", "不同意", "一般", "同意", "完全同意"] },
+    ],
+    mapScore: (answers) => {
+      const total = answers.reduce((s,a) => s+a, 0);
+      const level = total >= 40 ? "沟通良好" : total >= 25 ? "沟通一般" : "沟通需改善";
+      return { total, level };
+    },
+  },
+};
+
+let currentTest = null, currentQ = 0, testAnswers = [], selectedOpt = null;
+const testStatus = { weekly: false, pressure: false, communication: false };
+let radarScores = [0,0,0,0,0,0];
+
+function startTest(type) {
+  currentTest   = type;
+  currentQ      = 0;
+  testAnswers   = [];
+  selectedOpt   = null;
+  const t = TESTS[type];
+  document.getElementById("test-modal-title").textContent  = t.name;
+  document.getElementById("test-modal-source").textContent = t.source;
+  renderQuestion();
+  document.getElementById("test-modal").classList.remove("hidden");
+}
+
+function renderQuestion() {
+  const t = TESTS[currentTest];
+  const total = t.questions.length;
+  const pct   = ((currentQ + 1) / total) * 100;
+  document.getElementById("test-progress-fill").style.width = pct + "%";
+  document.getElementById("test-progress-text").textContent = `第 ${currentQ+1} 题 / 共 ${total} 题`;
+  document.getElementById("q-num").textContent  = `Q${currentQ + 1}`;
+  document.getElementById("q-text").textContent = t.questions[currentQ].text;
+  const optBox = document.getElementById("test-options");
+  optBox.innerHTML = t.questions[currentQ].options.map((o, i) =>
+    `<button class="test-opt-btn" onclick="selectTestOpt(this, ${i})">${o}</button>`
+  ).join("");
+  selectedOpt = null;
+  document.getElementById("btn-next").disabled = true;
+  const btnNext = document.getElementById("btn-next");
+  btnNext.textContent = currentQ < total - 1 ? "下一题 ›" : "提交测评";
+}
+
+function selectTestOpt(btn, idx) {
+  document.querySelectorAll(".test-opt-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedOpt = idx;
+  document.getElementById("btn-next").disabled = false;
+}
+
+function nextQuestion() {
+  if (selectedOpt === null) return;
+  testAnswers.push(selectedOpt + 1); // 1-indexed
+  const t = TESTS[currentTest];
+  if (currentQ < t.questions.length - 1) {
+    currentQ++;
+    renderQuestion();
+  } else {
+    finishTest();
+  }
+}
+
+function finishTest() {
+  closeTest();
+  testStatus[currentTest] = true;
+  document.getElementById(`ts-${currentTest}`).textContent = "已完成";
+  document.getElementById(`ts-${currentTest}`).classList.add("done");
+
+  const t = TESTS[currentTest];
+  const scoreResult = t.mapScore(testAnswers);
+  let html = "";
+
+  if (currentTest === "weekly") {
+    radarScores = scoreResult;
+    radarScores.forEach((s, i) => {
+      document.getElementById(`rs-${i}`).textContent = s;
+    });
+    drawRadar();
+    const riskCount = radarScores.filter(s => s >= 3).length;
+    if (riskCount >= 3) document.getElementById("risk-alert").classList.remove("hidden");
+    html = `<p>测评完成！</p><p>已更新您的心理画像雷达图。</p>`;
+    if (riskCount >= 3) html += `<p class="result-warning">⚠️ 检测到 ${riskCount} 项指标偏高，建议寻求专业帮助或与AI聊聊。</p>`;
+    else html += `<p class="result-ok">✅ 总体状态良好，请继续保持！</p>`;
+  } else if (currentTest === "pressure") {
+    html = `<p>感知压力总分：<strong>${scoreResult.total}</strong> / 50</p>
+            <p>压力水平：<strong>${scoreResult.level}</strong></p>`;
+    if (scoreResult.level === "高压力") html += `<p class="result-warning">⚠️ 您的压力水平较高，建议与AI朋友聊聊，或寻求专业心理支持。</p>`;
+    else html += `<p class="result-ok">✅ 压力处于可控范围，继续保持良好的生活习惯！</p>`;
+  } else {
+    html = `<p>亲子沟通总分：<strong>${scoreResult.total}</strong> / 50</p>
+            <p>沟通质量：<strong>${scoreResult.level}</strong></p>`;
+    if (scoreResult.level === "沟通需改善") html += `<p class="result-warning">💡 可以尝试和家长分享更多想法，或使用AI家长端获取沟通建议。</p>`;
+    else html += `<p class="result-ok">✅ 您和家长之间的沟通质量不错！</p>`;
+  }
+
+  document.getElementById("result-body").innerHTML = html;
+  document.getElementById("result-modal").classList.remove("hidden");
+}
+
+function closeTest()   { document.getElementById("test-modal").classList.add("hidden"); }
+function closeResult() { document.getElementById("result-modal").classList.add("hidden"); }
+
+// ── 雷达图绘制 ──
+function drawRadar() {
+  const canvas = document.getElementById("radar-canvas");
+  const ctx = canvas.getContext("2d");
+  const cx = 120, cy = 120, R = 90;
+  const labels = ["学习焦虑", "对人焦虑", "孤独倾向", "自责倾向", "过敏倾向", "身体症状"];
+  const colors = ["#f44336","#e91e63","#9c27b0","#ff9800","#2196f3","#00bcd4"];
+  const n = 6;
+  const maxScore = 10;
+
+  ctx.clearRect(0, 0, 240, 240);
+
+  // 背景环
+  for (let ring = 1; ring <= 4; ring++) {
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+      const r = R * ring / 4;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = "rgba(0,0,0,0.08)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // 轴线
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + R * Math.cos(angle), cy + R * Math.sin(angle));
+    ctx.strokeStyle = "rgba(0,0,0,0.12)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // 数据多边形
+  const maxVal = Math.max(...radarScores, 1);
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    const val = Math.min(radarScores[i] / maxScore, 1);
+    const r = R * val;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = "rgba(0, 200, 83, 0.15)";
+  ctx.fill();
+  ctx.strokeStyle = "#00C853";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 数据点
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    const val = Math.min(radarScores[i] / maxScore, 1);
+    const r = R * val;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = colors[i];
+    ctx.fill();
+  }
+
+  // 标签
+  ctx.font = "11px 'Noto Sans SC', sans-serif";
+  ctx.fillStyle = "#555";
+  ctx.textAlign = "center";
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+    const lx = cx + (R + 18) * Math.cos(angle);
+    const ly = cy + (R + 18) * Math.sin(angle);
+    ctx.fillText(labels[i], lx, ly + 4);
+  }
+}
+
+// ── 初始化 ──
+document.addEventListener("DOMContentLoaded", () => {
+  const now = new Date();
+  document.getElementById("today-date").textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+  drawRadar();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}登录 — 暖学帮{% endblock %}
+{% block body_class %}login-page{% endblock %}
+
+{% block body %}
+<div class="login-container">
+  <!-- Logo -->
+  <div class="login-logo">
+    <div class="logo-circle">🌟</div>
+    <h1 class="logo-name">暖学帮</h1>
+    <p class="logo-slogan">温暖陪伴，智慧成长</p>
+  </div>
+
+  <!-- 身份选择（初始状态） -->
+  <div id="role-select" class="role-select">
+    <p class="select-label">选择您的身份</p>
+    <div class="role-cards">
+      <button class="role-card student-card" onclick="selectRole('student')">
+        <span class="role-icon">🎓</span>
+        <span class="role-name">我是学生</span>
+        <span class="role-desc">心理测评 · AI对话 · 知识库</span>
+        <span class="role-arrow" style="color:#00C853">›</span>
+      </button>
+      <button class="role-card parent-card" onclick="selectRole('parent')">
+        <span class="role-icon">👨‍👩‍👧</span>
+        <span class="role-name">我是家长</span>
+        <span class="role-desc">查看报告 · AI助手 · 成长追踪</span>
+        <span class="role-arrow" style="color:#FF9500">›</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 登录表单（选择身份后显示） -->
+  <div id="login-form-wrap" class="login-form-wrap hidden">
+    <div class="form-header">
+      <h2 id="form-title" class="form-title">学生登录</h2>
+      <button class="switch-role-btn" onclick="switchRole()">切换身份</button>
+    </div>
+
+    <form id="login-form" method="POST" action="{{ url_for('login') }}" onsubmit="return validateForm()">
+      <input type="hidden" name="role" id="role-input" value="student" />
+
+      <div class="form-group">
+        <label class="form-label" for="name">你的名字</label>
+        <input class="form-input" type="text" id="name" name="name" placeholder="请输入你的名字（选填）" maxlength="20" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="phone">手机号</label>
+        <input class="form-input" type="tel" id="phone" name="phone" placeholder="请输入手机号" maxlength="11" />
+      </div>
+
+      <button type="submit" class="login-btn" id="submit-btn">进入暖学帮</button>
+    </form>
+
+    <p class="agreement-text">
+      登录即表示您已阅读并同意
+      <a href="#" class="agreement-link">《用户协议》</a>和
+      <a href="#" class="agreement-link">《隐私政策》</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let selectedRole = null;
+
+  function selectRole(role) {
+    selectedRole = role;
+    document.getElementById('role-input').value = role;
+    document.getElementById('role-select').classList.add('hidden');
+    document.getElementById('login-form-wrap').classList.remove('hidden');
+
+    const isStudent = role === 'student';
+    document.getElementById('form-title').textContent = isStudent ? '学生登录' : '家长登录';
+    document.getElementById('submit-btn').className =
+      'login-btn ' + (isStudent ? 'btn-student' : 'btn-parent');
+  }
+
+  function switchRole() {
+    document.getElementById('login-form-wrap').classList.add('hidden');
+    document.getElementById('role-select').classList.remove('hidden');
+  }
+
+  function validateForm() {
+    const phone = document.getElementById('phone').value.trim();
+    if (phone && !/^1[3-9]\d{9}$/.test(phone)) {
+      alert('请输入正确的手机号格式');
+      return false;
+    }
+    return true;
+  }
+</script>
+{% endblock %}
