@@ -1,7 +1,9 @@
 # WarmStudy Quick Start Script
 $ErrorActionPreference = "Stop"
-$AgentDir = "C:\Users\34206\OneDrive\Desktop\项目\暖学帮\agent"
+$AgentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $VenvPython = Join-Path $AgentDir ".venv\Scripts\python.exe"
+$RequirementsFile = Join-Path $AgentDir "requirements.txt"
+$EnvExampleFile = Join-Path $AgentDir ".env.example"
 
 Set-Location $AgentDir
 Write-Host "========================================"
@@ -20,20 +22,32 @@ Write-Host "   OK"
 # Install deps
 Write-Host "[2/4] Installing dependencies..."
 & $VenvPython -m pip install --upgrade pip -q
-& $VenvPython -m pip install flask flask-cors chromadb dashscope -q
+if (Test-Path $RequirementsFile) {
+    & $VenvPython -m pip install -r $RequirementsFile -q
+} else {
+    & $VenvPython -m pip install flask flask-cors chromadb dashscope requests python-dotenv -q
+}
 Write-Host "   OK"
 
 # Check .env
 Write-Host "[3/4] Checking .env..."
 $EnvFile = Join-Path $AgentDir ".env"
 if (-not (Test-Path $EnvFile)) {
-    @"
+    if (Test-Path $EnvExampleFile) {
+        Copy-Item $EnvExampleFile $EnvFile
+    } else {
+        @"
+# WarmStudy environment example
+CHAT_MODEL=qwen
 DASHSCOPE_API_KEY=your_key_here
+DASHSCOPE_MODEL=qwen-plus
 MINIMAX_API_KEY=your_key_here
-CHAT_MODEL=dashscope
-DASHSCOPE_MODEL=qwen-max
+RAG_AGENT_URL=http://localhost:5177
+FLASK_ENV=production
+LOG_LEVEL=INFO
 "@ | Out-File -FilePath $EnvFile -Encoding UTF8
-    Write-Host "   NOTE: .env created, please edit to add API keys"
+    }
+    Write-Host "   NOTE: .env created, please edit it before production use"
 } else {
     Write-Host "   OK"
 }

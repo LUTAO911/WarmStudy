@@ -7,6 +7,7 @@ echo WarmStudy - Quick Start
 echo ========================================
 
 set VENV_PYTHON=.venv\Scripts\python.exe
+set REQUIREMENTS=requirements.txt
 
 echo [1/4] Checking venv...
 if not exist "%VENV_PYTHON%" (
@@ -15,14 +16,26 @@ if not exist "%VENV_PYTHON%" (
 
 echo [2/4] Installing dependencies...
 "%VENV_PYTHON%" -m pip install --upgrade pip -q
-"%VENV_PYTHON%" -m pip install flask flask-cors chromadb dashscope -q
+if exist "%REQUIREMENTS%" (
+    "%VENV_PYTHON%" -m pip install -r "%REQUIREMENTS%" -q
+) else (
+    "%VENV_PYTHON%" -m pip install flask flask-cors chromadb dashscope requests python-dotenv -q
+)
 
 echo [3/4] Checking .env config...
 if not exist ".env" (
-    echo DASHSCOPE_API_KEY=your_key_here>.env
-    echo MINIMAX_API_KEY=your_key_here>>.env
-    echo CHAT_MODEL=dashscope>>.env
-    echo DASHSCOPE_MODEL=qwen-max>>.env
+    if exist ".env.example" (
+        copy /Y ".env.example" ".env" >nul
+    ) else (
+        echo # WarmStudy environment example>.env
+        echo CHAT_MODEL=qwen>>.env
+        echo DASHSCOPE_API_KEY=your_key_here>>.env
+        echo DASHSCOPE_MODEL=qwen-plus>>.env
+        echo MINIMAX_API_KEY=your_key_here>>.env
+        echo RAG_AGENT_URL=http://localhost:5177>>.env
+        echo FLASK_ENV=production>>.env
+        echo LOG_LEVEL=INFO>>.env
+    )
 )
 
 echo [4/4] Starting services...

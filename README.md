@@ -1,3 +1,18 @@
+# WarmStudy Quick Links
+
+- Documentation index: `docs/README.md`
+- Deployment runbook: `docs/DEPLOYMENT_RUNBOOK.md`
+- Model selection guide: `docs/MODEL_SELECTION.md`
+- Commercialization plan: `docs/COMMERCIALIZATION_PLAN.md`
+- Open source/components note: `docs/OPEN_SOURCE_AND_COMPONENTS.md`
+- Model source/deployment note: `docs/MODEL_SOURCE_AND_DEPLOYMENT_NOTE.md`
+- Project overview form: `docs/PROJECT_OVERVIEW_FORM.md`
+- PPT/demo outline: `docs/PPT_AND_DEMO_OUTLINE.md`
+- Competition checklist: `docs/COMPETITION_SUBMISSION_CHECKLIST.md`
+- Backend quick start: `agent/start_all.ps1` or `agent/start_all.bat`
+
+> Note: for onboarding and delivery, start with the files under `docs/`.
+
 # 暖学帮 - 青少年心理关怀AI
 
 <div align="center">
