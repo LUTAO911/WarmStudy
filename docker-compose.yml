@@ -4,48 +4,40 @@ version: '3.8'
 name: nuanxuebang
 
 services:
-  # 后端服务
+  # Agent 后端服务
   backend:
     build:
-      context: ./backend
+      context: ./agent
       dockerfile: Dockerfile
     container_name: nuanxuebang-backend
     ports:
-      - "8000:8000"
+      - "8000:5177"
     environment:
       - DATABASE_URL=sqlite:///./data/nuanxuebang.db
       - VECTOR_DB_PATH=./vector_db
       - KNOWLEDGE_BASE_PATH=./knowledge
-      - MINIMAX_API_KEY=${MINIMAX_API_KEY:-}
-      - QWEN_API_KEY=${QWEN_API_KEY:-}
+      - QWEN_API_KEY=${QWEN_API_KEY:-sk-14ddc07d28434828826acd058b5efb02}
+      - REDIS_URL=${REDIS_URL:-redis://localhost:6379}
     volumes:
-      - ./backend/data:/app/data
-      - ./backend/knowledge:/app/knowledge
-      - ./backend/vector_db:/app/vector_db
+      - ./agent/data:/app/data
+      - ./agent/knowledge:/app/knowledge
+      - ./agent/vector_db:/app/vector_db
+      - ./agent/logs:/app/logs
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5177/api/v5/status"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - nuanxuebang-network
-
-  # RAG知识库管理界面
-  rag-admin:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: nuanxuebang-rag-admin
-    ports:
-      - "8501:8501"
-    environment:
-      - API_BASE=http://backend:8000/api
-    command: streamlit run web/rag_admin.py --server.port=8501 --server.address=0.0.0.0
-    depends_on:
-      - backend
-    restart: unless-stopped
     networks:
       - nuanxuebang-network
 

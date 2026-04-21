@@ -38,4 +38,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5177/api/v5/status || exit 1
 
 # 启动命令
-CMD ["python", "-m", "agent.app"]
+CMD ["python", "app.py"]
