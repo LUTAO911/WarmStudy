@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WarmStudy Gateway Console</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --border: #d8e2ef;
+      --text: #17324d;
+      --muted: #60758a;
+      --primary: #0f766e;
+      --primary-soft: #ccfbf1;
+      --accent: #2563eb;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 28px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 34px;
+      line-height: 1.15;
+    }
+
+    .hero-main p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .hero-side {
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: #eef6ff;
+      color: var(--accent);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+    }
+
+    .dot.offline {
+      background: var(--danger);
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+    }
+
+    .meta {
+      display: grid;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .meta strong {
+      color: var(--text);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
+    }
+
+    .panel {
+      padding: 22px;
+    }
+
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-7 { grid-column: span 7; }
+    .span-12 { grid-column: span 12; }
+
+    .panel h2 {
+      margin: 0 0 16px;
+      font-size: 20px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .stat {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fbfdff;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 16px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+      font-weight: 700;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button.secondary { background: #0f766e; }
+    button.ghost { background: #eef2ff; color: var(--accent); }
+    button.danger { background: var(--danger); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 130px;
+      resize: vertical;
+    }
+
+    .result-box {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 14px;
+      padding: 16px;
+      min-height: 160px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 13px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .toolbar-note {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-top: 10px;
+    }
+
+    a.quick-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+      margin-right: 14px;
+    }
+
+    @media (max-width: 1024px) {
+      .hero,
+      .two-col,
+      .stat-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .span-4,
+      .span-5,
+      .span-7,
+      .span-12 {
+        grid-column: span 12;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="card hero-main">
+        <div class="eyebrow">8000 Gateway Console</div>
+        <h1>WarmStudy 后端控制台</h1>
+        <p>
+          这个页面运行在 <code>8000</code>，负责统一查看网关状态，并通过代理接口操控
+          <code>5177</code> 的 RAG / Agent 服务。对外只需要暴露一个端口，内部仍保留双服务职责拆分。
+        </p>
+        <div class="actions">
+          <button class="secondary" onclick="refreshStatus()">刷新状态</button>
+          <button class="ghost" onclick="openLegacyPlayground()">打开旧聊天页</button>
+        </div>
+      </div>
+      <div class="card hero-side">
+        <div class="status-pill"><span id="ragDot" class="dot offline"></span><span id="ragStatusText">RAG 未检查</span></div>
+        <div class="meta">
+          <div><strong>网关地址</strong><br><span id="gatewayBase">http://localhost:8000</span></div>
+          <div><strong>RAG 地址</strong><br><span id="ragBase">{{ rag_agent_url }}</span></div>
+          <div><strong>代理入口</strong><br><span>/api/gateway/rag/*</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card panel span-5">
+        <h2>服务状态</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-label">Gateway</div>
+            <div class="stat-value" id="gatewayState">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">RAG Health</div>
+            <div class="stat-value" id="ragHealthState">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">知识块数</div>
+            <div class="stat-value" id="chunkCount">-</div>
+          </div>
+        </div>
+        <div class="toolbar-note">
+          这里展示的是 8000 网关自身状态，以及通过代理拉回来的 5177 索引与健康信息。
+        </div>
+      </div>
+
+      <div class="card panel span-7">
+        <h2>快捷操作</h2>
+        <div class="actions">
+          <button onclick="fetchJson('/api/gateway/rag/status', 'opsResult')">查看 RAG Status</button>
+          <button onclick="fetchJson('/api/gateway/rag/index/info', 'opsResult')">查看索引信息</button>
+          <button class="danger" onclick="resetKnowledgeBase()">重置知识库</button>
+        </div>
+        <div class="toolbar-note">
+          这些操作都走 8000 代理，不需要浏览器直接访问 5177。
+        </div>
+        <div id="opsResult" class="result-box" style="margin-top:16px;"></div>
+      </div>
+
+      <div class="card panel span-7">
+        <h2>知识库检索</h2>
+        <div class="field">
+          <label for="searchQuery">查询</label>
+          <input id="searchQuery" placeholder="例如：考试焦虑怎么缓解" />
+        </div>
+        <div class="actions">
+          <button onclick="runSearch()">向量检索</button>
+          <button class="secondary" onclick="runHybridSearch()">混合检索</button>
+        </div>
+        <div id="searchResult" class="result-box" style="margin-top:16px;"></div>
+      </div>
+
+      <div class="card panel span-5">
+        <h2>RAG Chat</h2>
+        <div class="field">
+          <label for="chatQuery">问题</label>
+          <textarea id="chatQuery" placeholder="直接通过 8000 控制 5177 的 /api/chat"></textarea>
+        </div>
+        <div class="actions">
+          <button onclick="runChat()">发送给 Agent</button>
+        </div>
+        <div id="chatResult" class="result-box" style="margin-top:16px;"></div>
+      </div>
+
+      <div class="card panel span-12">
+        <h2>文档导入到 5177</h2>
+        <div class="two-col">
+          <div>
+            <div class="field">
+              <label for="ingestFile">上传文件</label>
+              <input id="ingestFile" type="file" />
+            </div>
+            <div class="actions">
+              <button onclick="uploadKnowledge()">同步导入</button>
+            </div>
+            <div class="toolbar-note">
+              调用路径：<code>/api/gateway/rag/ingest/sync</code>
+            </div>
+          </div>
+          <div>
+            <div class="field">
+              <label>可用链接</label>
+              <div>
+                <a class="quick-link" href="/api/gateway/rag/docs" target="_blank">RAG Docs JSON</a>
+                <a class="quick-link" href="/psychology-test" target="_blank">旧心理对话页</a>
+              </div>
+            </div>
+            <div id="ingestResult" class="result-box"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function pretty(data) {
+      return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    async function fetchJson(url, resultId, options) {
+      const resultBox = document.getElementById(resultId);
+      if (resultBox) resultBox.textContent = 'Loading...';
+      try {
+        const response = await fetch(url, options || {});
+        const contentType = response.headers.get('content-type') || '';
+        const payload = contentType.includes('application/json')
+          ? await response.json()
+          : await response.text();
+        if (resultBox) resultBox.textContent = pretty(payload);
+        return payload;
+      } catch (error) {
+        if (resultBox) resultBox.textContent = String(error);
+        return null;
+      }
+    }
+
+    async function refreshStatus() {
+      const payload = await fetchJson('/api/gateway/status', 'opsResult');
+      if (!payload) return;
+      document.getElementById('gatewayState').textContent = payload.gateway?.status || '-';
+      document.getElementById('ragHealthState').textContent = payload.rag?.health?.ok ? 'ok' : 'down';
+      document.getElementById('chunkCount').textContent =
+        payload.rag?.status?.count ?? payload.rag?.index?.info?.total_chunks ?? '-';
+
+      const healthy = payload.rag?.health?.ok || payload.rag?.health?.success || false;
+      const dot = document.getElementById('ragDot');
+      const text = document.getElementById('ragStatusText');
+      dot.className = healthy ? 'dot' : 'dot offline';
+      text.textContent = healthy ? 'RAG 在线，可通过 8000 操控' : 'RAG 离线或未响应';
+    }
+
+    async function runSearch() {
+      const q = document.getElementById('searchQuery').value.trim();
+      if (!q) return;
+      await fetchJson(`/api/gateway/rag/search?q=${encodeURIComponent(q)}&n=5`, 'searchResult');
+    }
+
+    async function runHybridSearch() {
+      const q = document.getElementById('searchQuery').value.trim();
+      if (!q) return;
+      await fetchJson('/api/gateway/rag/hybrid-search', 'searchResult', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q, n_results: 5, vector_weight: 0.7, bm25_weight: 0.3, rerank: true })
+      });
+    }
+
+    async function runChat() {
+      const q = document.getElementById('chatQuery').value.trim();
+      if (!q) return;
+      await fetchJson('/api/gateway/rag/chat', 'chatResult', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q, n: 5, use_hybrid: true, use_rerank: true })
+      });
+    }
+
+    async function uploadKnowledge() {
+      const fileInput = document.getElementById('ingestFile');
+      const file = fileInput.files[0];
+      if (!file) {
+        document.getElementById('ingestResult').textContent = '请先选择文件。';
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', file);
+      await fetchJson('/api/gateway/rag/ingest/sync', 'ingestResult', {
+        method: 'POST',
+        body: formData
+      });
+    }
+
+    async function resetKnowledgeBase() {
+      if (!confirm('确认通过 8000 代理重置 5177 的知识库吗？')) return;
+      await fetchJson('/api/gateway/rag/reset', 'opsResult', { method: 'POST' });
+      await refreshStatus();
+    }
+
+    function openLegacyPlayground() {
+      window.open('/psychology-test', '_blank');
+    }
+
+    refreshStatus();
+  </script>
+</body>
+</html>

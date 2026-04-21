@@ -7,8 +7,9 @@ import os
 import time
 import json
 import random
+import requests
 from pathlib import Path
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, Response
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -35,6 +36,90 @@ def format_response(data):
 
 def format_error(message, code=400):
     return jsonify({"success": False, "error": message}), code
+
+
+def _rag_url(path: str) -> str:
+    return f"{RAG_AGENT_URL.rstrip('/')}{path}"
+
+
+def _proxy_to_rag(
+    path: str,
+    method: str = "GET",
+    *,
+    timeout: int = 60,
+    pass_query: bool = True,
+):
+    url = _rag_url(path)
+    params = request.args.to_dict(flat=True) if pass_query else None
+    headers = {"X-Forwarded-By": "warmstudy-api-gateway"}
+
+    try:
+        if request.files:
+            files = []
+            for key in request.files:
+                for storage in request.files.getlist(key):
+                    files.append(
+                        (
+                            key,
+                            (
+                                storage.filename,
+                                storage.stream.read(),
+                                storage.mimetype or "application/octet-stream",
+                            ),
+                        )
+                    )
+            data = request.form.to_dict(flat=True)
+            resp = requests.request(
+                method=method,
+                url=url,
+                params=params,
+                data=data,
+                files=files,
+                headers=headers,
+                timeout=timeout,
+            )
+        else:
+            json_body = request.get_json(silent=True)
+            if json_body is not None and method in {"POST", "PUT", "PATCH", "DELETE"}:
+                resp = requests.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_body,
+                    headers=headers,
+                    timeout=timeout,
+                )
+            else:
+                resp = requests.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    data=request.get_data() if method in {"POST", "PUT", "PATCH"} else None,
+                    headers=headers,
+                    timeout=timeout,
+                )
+    except requests.RequestException as exc:
+        return jsonify({
+            "success": False,
+            "error": f"RAG service request failed: {exc}",
+            "rag_agent_url": RAG_AGENT_URL,
+        }), 502
+
+    content_type = resp.headers.get("Content-Type", "application/json")
+    excluded_headers = {"content-encoding", "content-length", "transfer-encoding", "connection"}
+    proxy_headers = [
+        (name, value) for name, value in resp.headers.items() if name.lower() not in excluded_headers
+    ]
+    return Response(resp.content, resp.status_code, proxy_headers, content_type=content_type)
+
+
+def _safe_json_from_rag(path: str, method: str = "GET", **kwargs):
+    try:
+        resp = requests.request(method=method, url=_rag_url(path), timeout=15, **kwargs)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
 
 @app.route("/api/auth/send-code", methods=["POST"])
 def send_code():
@@ -403,12 +488,100 @@ def health_check():
         "version": "1.0.0"
     })
 
+
+@app.route("/api/gateway/status", methods=["GET"])
+def gateway_status():
+    rag_health = _safe_json_from_rag("/api/health")
+    rag_status = _safe_json_from_rag("/api/status")
+    rag_index = _safe_json_from_rag("/api/index/info")
+    return jsonify({
+        "success": True,
+        "gateway": {
+            "status": "healthy",
+            "service": "warmstudy-api-gateway",
+            "port": 8000,
+            "timestamp": datetime.now().isoformat(),
+        },
+        "rag": {
+            "base_url": RAG_AGENT_URL,
+            "health": rag_health,
+            "status": rag_status,
+            "index": rag_index,
+        },
+        "links": {
+            "console": "/",
+            "playground": "/psychology-test",
+            "rag_status_proxy": "/api/gateway/rag/status",
+            "rag_docs_proxy": "/api/gateway/rag/docs",
+        }
+    })
+
+
+@app.route("/api/gateway/rag/status", methods=["GET"])
+def proxy_rag_status():
+    return _proxy_to_rag("/api/status")
+
+
+@app.route("/api/gateway/rag/health", methods=["GET"])
+def proxy_rag_health():
+    return _proxy_to_rag("/api/health")
+
+
+@app.route("/api/gateway/rag/index/info", methods=["GET"])
+def proxy_rag_index_info():
+    return _proxy_to_rag("/api/index/info")
+
+
+@app.route("/api/gateway/rag/docs", methods=["GET"])
+def proxy_rag_docs():
+    return _proxy_to_rag("/api/docs")
+
+
+@app.route("/api/gateway/rag/search", methods=["GET"])
+def proxy_rag_search():
+    return _proxy_to_rag("/api/search")
+
+
+@app.route("/api/gateway/rag/hybrid-search", methods=["POST"])
+def proxy_rag_hybrid_search():
+    return _proxy_to_rag("/api/hybrid-search", method="POST", pass_query=False)
+
+
+@app.route("/api/gateway/rag/chat", methods=["POST"])
+def proxy_rag_chat():
+    return _proxy_to_rag("/api/chat", method="POST", pass_query=False)
+
+
+@app.route("/api/gateway/rag/ingest/sync", methods=["POST"])
+def proxy_rag_ingest_sync():
+    return _proxy_to_rag("/api/ingest/sync", method="POST", pass_query=False)
+
+
+@app.route("/api/gateway/rag/reset", methods=["POST"])
+def proxy_rag_reset():
+    return _proxy_to_rag("/api/reset", method="POST", pass_query=False)
+
+
+@app.route("/api/gateway/rag/delete", methods=["POST"])
+def proxy_rag_delete():
+    return _proxy_to_rag("/api/delete", method="POST", pass_query=False)
+
+
+@app.route("/api/gateway/rag/update", methods=["POST"])
+def proxy_rag_update():
+    return _proxy_to_rag("/api/update", method="POST", pass_query=False)
+
 @app.route("/", methods=["GET"])
 def index():
     """
     暖学帮 - 青少年心理陪伴 AI 对话界面
     接入 Qwen/Tongyi 大模型
     """
+    return render_template("gateway_dashboard.html", rag_agent_url=RAG_AGENT_URL)
+
+
+@app.route("/psychology-test", methods=["GET"])
+def psychology_test():
     return render_template("psychology_test.html")
 
 
