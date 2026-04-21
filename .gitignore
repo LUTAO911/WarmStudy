@@ -32,3 +32,5 @@ chroma_db/
 # Environment
 .env
 .env.local
+
+*.tgz
