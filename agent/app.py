@@ -358,7 +358,7 @@ Answer based on the context above:"""
 
 
 def generate_chat_response(prompt: str, model: str = None) -> str:
-    chat_model = os.getenv("CHAT_MODEL", "minimax")
+    chat_model = os.getenv("CHAT_MODEL", "qwen")
 
     if chat_model == "minimax":
         return call_minimax_api(prompt)

@@ -90,7 +90,7 @@ class Executor:
     def generate_response(
         self,
         prompt: str,
-        model: str = "minimax",
+        model: str = "qwen",
         stream_callback: Optional[Callable] = None,
         temperature: float = 0.7,
         max_tokens: int = 1024
