@@ -2,7 +2,7 @@
 
 正式提纲请参考：
 
-- `docs/PPT_AND_DEMO_OUTLINE.md`
+- 当前 PPT 与答辩材料不作为本轮主要维护范围，建议以项目总说明和 README 作为展示口径参考
 
 ## 推荐页序
 

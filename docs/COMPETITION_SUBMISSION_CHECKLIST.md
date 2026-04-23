@@ -19,11 +19,9 @@ This checklist is aligned to the 2026 Guangdong University Computer Design Compe
 - [x] `README.md`
 - [x] `docs/DEPLOYMENT_RUNBOOK.md`
 - [x] `docs/MODEL_SELECTION.md`
-- [x] `docs/COMMERCIALIZATION_PLAN.md`
 - [x] `docs/OPEN_SOURCE_AND_COMPONENTS.md`
 - [x] `docs/MODEL_SOURCE_AND_DEPLOYMENT_NOTE.md`
 - [x] `docs/PROJECT_OVERVIEW_FORM.md`
-- [x] `docs/PPT_AND_DEMO_OUTLINE.md`
 
 ## 3. Content Checklist For Project Report
 
