@@ -1,4 +1,9 @@
-﻿import { studentChat, getCurrentTime, getUserId } from "../../../utils/api";
+import {
+  studentChat,
+  getCurrentTime,
+  getUserId,
+  updateStudentProfile,
+} from "../../../utils/api";
 
 declare const requirePlugin: ((pluginName: string) => any) | undefined;
 
@@ -354,6 +359,9 @@ Page({
     });
     wx.setStorageSync("student_profile_completed", true);
     this.setData({ showInfoModal: false });
+    updateStudentProfile(getUserId(), childInfo).catch(() => {
+      /* empty */
+    });
     this.createNewSession();
   },
 
@@ -511,6 +519,31 @@ Page({
     this.scrollToBottom();
   },
 
+  async renderAIMessageGradually(
+    content: string,
+    emotion: number = 2,
+  ): Promise<void> {
+    const fullText = content || "";
+    const totalLength = fullText.length;
+    const step = totalLength > 180 ? 6 : totalLength > 90 ? 4 : 2;
+
+    this.setData({
+      streamingContent: "",
+      loading: true,
+    });
+
+    for (let i = 0; i < totalLength; i += step) {
+      if ((this.data as ChatPageData).stopRequested) {
+        return;
+      }
+      this.setData({ streamingContent: fullText.slice(0, i + step) });
+      this.scrollToBottom();
+      await new Promise((resolve) => setTimeout(resolve, 18));
+    }
+
+    this.addAIMessage(fullText, emotion);
+  },
+
   shouldShowTime(lastTime: string, currentTime: string): boolean {
     const lastParts = lastTime.split(":");
     const currentParts = currentTime.split(":");
@@ -525,10 +558,20 @@ Page({
 
   callAI(text: string) {
     const userId = getUserId();
+    const childInfo = (this.data as ChatPageData).childInfo;
+    const sessionId = (this.data as ChatPageData).currentSessionId;
 
     this.setData({ streamingContent: "", loading: true, stopRequested: false });
 
-    studentChat(userId, text)
+    studentChat(userId, text, {
+      sessionId,
+      profile: {
+        name: childInfo.name,
+        gender: childInfo.gender,
+        age: childInfo.age,
+        grade: childInfo.grade,
+      },
+    })
       .then(
         (res: {
           success: boolean;
@@ -536,6 +579,8 @@ Page({
           emotion?: string;
           crisis_level?: string;
           type?: string;
+          strategy?: Record<string, any>;
+          session_id?: string;
         }) => {
           if ((this.data as ChatPageData).stopRequested) {
             this.setData({ stopRequested: false });
@@ -555,7 +600,10 @@ Page({
               console.warn("危机检测:", res.crisis_level);
             }
 
-            this.addAIMessage(res.response, emotion);
+            this.renderAIMessageGradually(res.response, emotion);
+            if (res.session_id && res.session_id !== sessionId) {
+              this.setData({ currentSessionId: res.session_id });
+            }
           } else {
             throw new Error("AI鍥炲澶辫触");
           }

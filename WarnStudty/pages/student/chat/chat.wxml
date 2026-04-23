@@ -73,7 +73,8 @@
     <view class="loading-message" wx:if="{{loading}}">
       <image class="msg-avatar" src="{{agent.avatar}}" mode="aspectFill" />
       <view class="bubble ai-bubble loading-bubble">
-        <view class="typing-indicator">
+        <text class="bubble-text" wx:if="{{streamingContent}}">{{streamingContent}}</text>
+        <view class="typing-indicator" wx:else>
           <view class="dot"></view>
           <view class="dot"></view>
           <view class="dot"></view>

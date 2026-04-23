@@ -35,3 +35,8 @@
 - 浏览器与管理员只访问 `8000`
 - `5177` 只作为内网或容器内服务
 - Docker 生产部署默认只映射 `8000`
+
+## 最近更新
+
+- [AGENT_REFINEMENT_UPDATE_2026-04-22.md](/C:/Users/34206/OneDrive/Desktop/WarmStudy-main/docs/AGENT_REFINEMENT_UPDATE_2026-04-22.md)
+- [AGENT_AND_PRODUCT_ADVANTAGES.md](/C:/Users/34206/OneDrive/Desktop/WarmStudy-main/docs/AGENT_AND_PRODUCT_ADVANTAGES.md)

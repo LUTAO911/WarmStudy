@@ -37,5 +37,9 @@ chroma_db/
 .pytest_cache/
 pytest-cache-files-*/
 agent/pytest-cache-files-*/
+agent/tests/.tmp/
 
 *.tgz
+
+# Local runtime data
+data/

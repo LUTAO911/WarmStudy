@@ -106,6 +106,15 @@ export function sendVerifyCode(phone: string): Promise<{
 export function studentChat(
   userId: string,
   message: string,
+  options?: {
+    sessionId?: string;
+    profile?: {
+      name?: string;
+      gender?: string;
+      age?: string | number;
+      grade?: string;
+    };
+  },
 ): Promise<{
   success: boolean;
   response: string;
@@ -113,6 +122,8 @@ export function studentChat(
   emotion?: string;
   crisis_level?: string;
   type?: string;
+  strategy?: Record<string, any>;
+  session_id?: string;
 }> {
   return request<{
     success: boolean;
@@ -121,7 +132,32 @@ export function studentChat(
     emotion?: string;
     crisis_level?: string;
     type?: string;
-  }>("/api/student/chat", { user_id: userId, message });
+    strategy?: Record<string, any>;
+    session_id?: string;
+  }>("/api/student/chat", {
+    user_id: userId,
+    message,
+    session_id: options?.sessionId,
+    profile: options?.profile,
+  });
+}
+
+export function updateStudentProfile(
+  userId: string,
+  profile: {
+    name?: string;
+    gender?: string;
+    age?: string | number;
+    grade?: string;
+  },
+): Promise<{
+  success: boolean;
+  message?: string;
+  profile?: Record<string, any>;
+  strategy?: Record<string, any>;
+  status?: any;
+}> {
+  return request("/api/student/profile", { user_id: userId, ...profile });
 }
 
 /**
@@ -267,10 +303,13 @@ export function getCheckinHistory(
 export function parentChat(
   userId: string,
   message: string,
-): Promise<{ response: string }> {
+  options?: { sessionId?: string; childId?: string },
+): Promise<{ response: string; strategy?: Record<string, any>; session_id?: string }> {
   return request<{ success: boolean; response: string }>("/api/parent/chat", {
     user_id: userId,
     message,
+    session_id: options?.sessionId,
+    child_id: options?.childId,
   });
 }
 

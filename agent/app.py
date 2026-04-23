@@ -24,6 +24,11 @@ from vectorstore import (
     ingest_to_chroma, query_chroma, query_with_hybrid_search,
     get_index_info, delete_by_source, reset_collection, update_document
 )
+from agent.strategy_engine import (
+    build_parent_system_context,
+    build_student_system_context,
+    normalize_student_profile,
+)
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
@@ -31,6 +36,50 @@ CORS(app)
 app.config["UPLOAD_FOLDER"] = str(Path(__file__).parent / "uploads")
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
 Path(app.config["UPLOAD_FOLDER"]).mkdir(exist_ok=True)
+ENV_FILE = Path(__file__).parent / ".env"
+
+
+def get_runtime_model_config() -> dict:
+    chat_model = os.getenv("DASHSCOPE_MODEL", "qwen-plus")
+    rag_model = os.getenv("RAG_DASHSCOPE_MODEL", chat_model)
+    embedding_model = os.getenv("DASHSCOPE_EMBEDDING_MODEL", "text-embedding-v3")
+    fallback_embedding_model = os.getenv("DASHSCOPE_EMBEDDING_FALLBACK_MODEL", "text-embedding-v2")
+    return {
+        "provider": "qwen",
+        "chat_model": chat_model,
+        "rag_model": rag_model,
+        "embedding_model": embedding_model,
+        "fallback_embedding_model": fallback_embedding_model,
+    }
+
+
+def persist_model_config(updates: dict) -> dict:
+    current = get_runtime_model_config()
+    mapping = {
+        "chat_model": "DASHSCOPE_MODEL",
+        "rag_model": "RAG_DASHSCOPE_MODEL",
+        "embedding_model": "DASHSCOPE_EMBEDDING_MODEL",
+        "fallback_embedding_model": "DASHSCOPE_EMBEDDING_FALLBACK_MODEL",
+    }
+    current.update({key: value for key, value in updates.items() if key in mapping and value})
+
+    env_map: dict[str, str] = {}
+    if ENV_FILE.exists():
+        for raw_line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+            stripped = raw_line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in raw_line:
+                continue
+            key, value = raw_line.split("=", 1)
+            env_map[key.strip()] = value.strip()
+
+    for key, env_name in mapping.items():
+        env_value = str(current[key]).strip()
+        env_map[env_name] = env_value
+        os.environ[env_name] = env_value
+
+    lines = [f"{key}={value}" for key, value in sorted(env_map.items())]
+    ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return get_runtime_model_config()
 
 
 def _template_agent_api_key() -> str:
@@ -80,6 +129,18 @@ def api_docs():
         return jsonify(get_openapi_spec())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/model-config", methods=["GET"])
+def api_get_model_config():
+    return jsonify({"ok": True, "config": get_runtime_model_config()})
+
+
+@app.route("/api/admin/model-config", methods=["POST"])
+def api_update_model_config():
+    data = request.get_json(silent=True) or {}
+    config = persist_model_config(data)
+    return jsonify({"ok": True, "message": "Model config updated", "config": config})
 
 
 @app.route("/api/docs/ui")
@@ -265,7 +326,7 @@ def api_chat():
     body = request.get_json()
     q = body.get("query", "").strip()
     n = int(body.get("n", 5))
-    model = body.get("model", "qwen-max")
+    model = body.get("model") or os.getenv("RAG_DASHSCOPE_MODEL", os.getenv("DASHSCOPE_MODEL", "qwen-plus"))
     use_hybrid = body.get("use_hybrid", True)
     use_rerank = body.get("use_rerank", True)
 
@@ -342,7 +403,7 @@ Answer based on the context above:"""
 
 def generate_chat_response(prompt: str, model: str = None) -> str:
     # 统一仅保留 DashScope/Qwen 接口。
-    qwen_model = os.getenv("DASHSCOPE_MODEL", "qwen-max")
+    qwen_model = model or os.getenv("DASHSCOPE_MODEL", "qwen-plus")
     return call_dashscope_api(prompt, qwen_model)
 
 

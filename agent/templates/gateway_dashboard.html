@@ -50,6 +50,18 @@
       display: grid;
       grid-template-columns: 1.2fr 0.8fr;
       gap: 24px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -8% -35% auto;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(15, 118, 110, 0.18), transparent 62%);
+      pointer-events: none;
     }
 
     .eyebrow {
@@ -116,6 +128,59 @@
 
     .section {
       padding: 22px;
+    }
+
+    .spotlight-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .spotlight-card {
+      position: relative;
+      overflow: hidden;
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.96), rgba(240,247,255,0.94)),
+        radial-gradient(circle at top right, rgba(37,99,235,0.16), transparent 38%);
+      box-shadow: 0 18px 34px rgba(15, 23, 42, 0.08);
+    }
+
+    .spotlight-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(37,99,235,0.06), transparent 48%);
+      pointer-events: none;
+    }
+
+    .spotlight-card h3 {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .spotlight-card p {
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 0 0 14px;
+      font-size: 14px;
+    }
+
+    .spotlight-kpis {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .spotlight-kpis span {
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.08);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 700;
     }
 
     .section-head {
@@ -225,6 +290,16 @@
       overflow: auto;
     }
 
+    .typing-cursor {
+      display: inline-block;
+      width: 8px;
+      animation: blink 0.9s steps(1) infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -288,7 +363,7 @@
     }
 
     @media (max-width: 1100px) {
-      .hero, .forms-grid, .two-col {
+      .hero, .forms-grid, .two-col, .spotlight-grid {
         grid-template-columns: 1fr;
       }
       .stats {
@@ -321,6 +396,44 @@
         <div class="meta-item"><strong>管理员入口</strong><span>当前页面 `/`，网关端口 `8000`</span></div>
         <div class="meta-item"><strong>内部 RAG 服务</strong><span id="ragAgentUrl">{{ rag_agent_url }}</span></div>
         <div class="meta-item"><strong>页面刷新</strong><span>使用顶部按钮可重新拉取后台与 RAG 状态</span></div>
+      </div>
+    </section>
+
+    <section class="section" style="margin-bottom:22px;">
+      <div class="section-head">
+        <div>
+          <h2>产品亮点与智能体设计</h2>
+          <p>把后台数据、心理陪伴、家长支持和 RAG 知识库真正串成一个会工作的场景智能体。</p>
+        </div>
+      </div>
+      <div class="spotlight-grid">
+        <article class="spotlight-card">
+          <h3>实时理解 App 状态</h3>
+          <p>学生一旦提交打卡、测评或触发预警，后台状态会立刻刷新。智能体不只看当前一句话，而是能结合最近的心理状态、风险变化和会话上下文调整回应。</p>
+          <div class="spotlight-kpis">
+            <span>即时状态联动</span>
+            <span>测评/打卡入会话</span>
+            <span>支持预警感知</span>
+          </div>
+        </article>
+        <article class="spotlight-card">
+          <h3>学生与家长双人格</h3>
+          <p>学生端优先共情、适龄表达、避免说教；家长端优先结构化建议、观察点和下一步动作。两端不再共用同一套提示词身份，减少答非所问和角色错位。</p>
+          <div class="spotlight-kpis">
+            <span>学生陪伴型</span>
+            <span>家长支持型</span>
+            <span>角色分流</span>
+          </div>
+        </article>
+        <article class="spotlight-card">
+          <h3>比普通聊天机器人更“懂场景”</h3>
+          <p>WarmStudy 的巧妙之处不只是调用大模型，而是把 RAG 知识、用户资料、测评状态、管理后台和对话策略放进同一个闭环，形成可观测、可管理、可迭代的校园心理支持系统。</p>
+          <div class="spotlight-kpis">
+            <span>RAG + 状态</span>
+            <span>管理可观测</span>
+            <span>比赛展示友好</span>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -390,6 +503,48 @@
           <button class="ghost" onclick="refreshModelUsage()">刷新模型</button>
         </div>
         <div id="modelUsageBox"></div>
+        <div class="section" style="padding:16px; margin-top:14px; background:var(--panel-soft);">
+          <div class="section-head" style="margin-bottom:10px;">
+            <div>
+              <h3>模型配置</h3>
+              <p>直接查看和修改聊天模型、RAG 模型与 Embedding 配置</p>
+            </div>
+          </div>
+          <div class="field">
+            <label>聊天模型</label>
+            <select id="chatModelSelect">
+              <option value="qwen-plus">qwen-plus</option>
+              <option value="qwen-max">qwen-max</option>
+              <option value="qwen-turbo">qwen-turbo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>RAG 生成模型</label>
+            <select id="ragModelSelect">
+              <option value="qwen-plus">qwen-plus</option>
+              <option value="qwen-max">qwen-max</option>
+              <option value="qwen-turbo">qwen-turbo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Embedding 模型</label>
+            <select id="embeddingModelSelect">
+              <option value="text-embedding-v3">text-embedding-v3</option>
+              <option value="text-embedding-v2">text-embedding-v2</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Embedding 备选模型</label>
+            <select id="fallbackEmbeddingModelSelect">
+              <option value="text-embedding-v2">text-embedding-v2</option>
+              <option value="text-embedding-v3">text-embedding-v3</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button class="secondary" onclick="saveModelConfig()">保存模型配置</button>
+            <button class="ghost" onclick="refreshModelConfig()">刷新配置</button>
+          </div>
+        </div>
         <h3 style="margin:18px 0 10px;">最近活动</h3>
         <div class="scroll">
           <table>
@@ -491,10 +646,26 @@
 
   <script>
     const consoleEl = document.getElementById("console");
+    let consoleTypingJob = 0;
 
     function writeConsole(title, payload) {
       const line = `\n[${new Date().toLocaleString()}] ${title}\n${typeof payload === "string" ? payload : JSON.stringify(payload, null, 2)}\n`;
       consoleEl.textContent = line + consoleEl.textContent;
+    }
+
+    async function writeConsoleAnimated(title, payload) {
+      const line = `\n[${new Date().toLocaleString()}] ${title}\n${typeof payload === "string" ? payload : JSON.stringify(payload, null, 2)}\n`;
+      const rest = consoleEl.textContent;
+      const jobId = ++consoleTypingJob;
+      consoleEl.textContent = "";
+      for (let i = 0; i < line.length; i += 3) {
+        if (jobId !== consoleTypingJob) return;
+        consoleEl.textContent = line.slice(0, i + 3) + "▋" + rest;
+        await new Promise((resolve) => setTimeout(resolve, 12));
+      }
+      if (jobId === consoleTypingJob) {
+        consoleEl.textContent = line + rest;
+      }
     }
 
     function clearConsole() {
@@ -595,12 +766,20 @@
       `;
     }
 
+    function renderModelConfig(config) {
+      document.getElementById("chatModelSelect").value = config.chat_model || "qwen-plus";
+      document.getElementById("ragModelSelect").value = config.rag_model || config.chat_model || "qwen-plus";
+      document.getElementById("embeddingModelSelect").value = config.embedding_model || "text-embedding-v3";
+      document.getElementById("fallbackEmbeddingModelSelect").value = config.fallback_embedding_model || "text-embedding-v2";
+    }
+
     async function refreshOverview() {
       const data = await fetchJson("/api/admin/overview");
       setStats(data.app, data.model_usage, data.rag);
       renderLogins(data.recent_logins || []);
       renderActivity(data.recent_activity || []);
       renderModelUsage(data.model_usage || {});
+      renderModelConfig(data.model_config || {});
       writeConsole("刷新系统概览", data);
     }
 
@@ -626,6 +805,29 @@
       const data = await fetchJson("/api/admin/model-usage");
       renderModelUsage(data.usage || {});
       writeConsole("刷新模型使用", data);
+    }
+
+    async function refreshModelConfig() {
+      const data = await fetchJson("/api/admin/model-config");
+      renderModelConfig(data.config || {});
+      writeConsole("刷新模型配置", data);
+    }
+
+    async function saveModelConfig() {
+      const payload = {
+        chat_model: document.getElementById("chatModelSelect").value,
+        rag_model: document.getElementById("ragModelSelect").value,
+        embedding_model: document.getElementById("embeddingModelSelect").value,
+        fallback_embedding_model: document.getElementById("fallbackEmbeddingModelSelect").value,
+      };
+      const data = await fetchJson("/api/admin/model-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      renderModelConfig(data.config || payload);
+      await writeConsoleAnimated("模型配置已更新", data);
+      refreshOverview();
     }
 
     async function ingestFile() {
@@ -706,12 +908,12 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q, n: 5, use_hybrid: true })
       });
-      writeConsole("RAG 问答结果", data);
+      await writeConsoleAnimated("RAG 问答结果", data);
       refreshModelUsage();
     }
 
     async function bootstrap() {
-      await Promise.all([refreshOverview(), refreshUsers(), refreshActivity()]);
+      await Promise.all([refreshOverview(), refreshUsers(), refreshActivity(), refreshModelConfig()]);
     }
 
     bootstrap().catch(error => writeConsole("初始化失败", error.message));

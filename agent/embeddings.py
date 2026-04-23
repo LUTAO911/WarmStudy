@@ -300,12 +300,13 @@ class CachedEmbeddings(EmbeddingModelBase):
 
 
 def get_embedder(
-    model: str = "text-embedding-v3",
+    model: str = None,
     dimension: int = 1024,
     use_cache: bool = True,
     use_fallback: bool = True,
     batch_size: int = 10
 ) -> EmbeddingModelBase:
+    model = model or os.getenv("DASHSCOPE_EMBEDDING_MODEL", "text-embedding-v3")
     api_key = _get_dashscope_key()
     if not api_key:
         raise ValueError("请设置 DASHSCOPE_API_KEY 环境变量")
@@ -313,7 +314,7 @@ def get_embedder(
     if use_fallback:
         base_embedder = MultiModelEmbeddings(
             primary_model=model,
-            fallback_model="text-embedding-v2",
+            fallback_model=os.getenv("DASHSCOPE_EMBEDDING_FALLBACK_MODEL", "text-embedding-v2"),
             dimension=dimension,
             batch_size=batch_size
         )
@@ -331,9 +332,10 @@ def get_embedder(
 
 
 def get_async_embedder(
-    model: str = "text-embedding-v3",
+    model: str = None,
     dimension: int = 1024,
     max_concurrent: int = 3
 ) -> AsyncBatchEmbeddings:
+    model = model or os.getenv("DASHSCOPE_EMBEDDING_MODEL", "text-embedding-v3")
     base_embedder = QwenEmbeddings(model=model, dimension=dimension)
     return AsyncBatchEmbeddings(base_embedder, max_concurrent_batches=max_concurrent)

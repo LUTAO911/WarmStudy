@@ -14,15 +14,24 @@ import random
 import time
 from copy import deepcopy
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import requests
 from flask import Flask, Response, jsonify, render_template, request
 
+from agent.strategy_engine import (
+    build_parent_strategy,
+    build_student_strategy,
+    infer_school_stage,
+    normalize_student_profile,
+)
+
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
 RAG_AGENT_URL = os.getenv("RAG_AGENT_URL", "http://localhost:5177")
 DEFAULT_DEV_AGENT_KEY = "agent_dev_key_12345"
+ENV_FILE = Path(__file__).parent / ".env"
 
 
 mock_database: dict[str, Any] = {
@@ -32,6 +41,7 @@ mock_database: dict[str, Any] = {
     "checkins": {},
     "psych_reports": {},
     "psych_status": {},
+    "strategy_state": {},
     "alerts": {},
     "grades": {},
     "admin": {
@@ -196,6 +206,23 @@ def _admin_rag_summary() -> dict[str, Any]:
     }
 
 
+def _admin_model_config_summary() -> dict[str, Any]:
+    try:
+        resp = requests.get(_rag_url("/api/admin/model-config"), timeout=15)
+        if resp.ok:
+            payload = resp.json()
+            return payload.get("config", {})
+    except Exception:
+        pass
+    return {
+        "provider": "qwen",
+        "chat_model": os.getenv("DASHSCOPE_MODEL", "qwen-plus"),
+        "rag_model": os.getenv("RAG_DASHSCOPE_MODEL", os.getenv("DASHSCOPE_MODEL", "qwen-plus")),
+        "embedding_model": os.getenv("DASHSCOPE_EMBEDDING_MODEL", "text-embedding-v3"),
+        "fallback_embedding_model": os.getenv("DASHSCOPE_EMBEDDING_FALLBACK_MODEL", "text-embedding-v2"),
+    }
+
+
 def _rag_url(path: str) -> str:
     return f"{RAG_AGENT_URL.rstrip('/')}{path}"
 
@@ -310,6 +337,91 @@ def _ensure_student_profile(user_id: str, *, phone: str | None = None, role: str
     }
     mock_database["students"][user_id] = profile
     return profile
+
+
+def _ensure_student_profile(user_id: str, *, phone: str | None = None, role: str = "student") -> dict[str, Any]:
+    existing = mock_database["students"].get(user_id)
+    if existing:
+        if phone and not existing.get("phone"):
+            existing["phone"] = phone
+        existing["school_stage"] = infer_school_stage(existing.get("age"), existing.get("grade"))
+        return existing
+
+    profile = {
+        "user_id": user_id,
+        "name": f"{'学生' if role == 'student' else '用户'}{user_id[-4:]}",
+        "phone": phone or "",
+        "role": role,
+        "gender": "",
+        "age": None,
+        "grade": "初一",
+        "school_stage": "junior",
+    }
+    mock_database["students"][user_id] = profile
+    return profile
+
+
+def _refresh_student_strategy(user_id: str) -> dict[str, Any]:
+    profile = _ensure_student_profile(user_id)
+    reports = mock_database["psych_reports"].get(user_id, [])
+    latest_report = reports[-1] if reports else None
+    recent_checkins = mock_database["checkins"].get(user_id, [])[-7:]
+    strategy = build_student_strategy(
+        profile,
+        recent_checkins=recent_checkins,
+        latest_report=latest_report,
+    )
+    mock_database["strategy_state"][user_id] = strategy
+    return strategy
+
+
+def _upsert_student_profile(user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    profile = _ensure_student_profile(user_id)
+    for key in ("name", "gender", "grade", "phone"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            profile[key] = value.strip()
+
+    age_value = payload.get("age")
+    if age_value not in (None, ""):
+        try:
+            profile["age"] = int(age_value)
+        except (TypeError, ValueError):
+            pass
+
+    profile["school_stage"] = infer_school_stage(profile.get("age"), profile.get("grade"))
+    mock_database["students"][user_id] = profile
+    _refresh_student_strategy(user_id)
+    return profile
+
+
+def _student_status_snapshot(user_id: str) -> dict[str, Any]:
+    payload = mock_database["psych_status"].get(user_id) or _build_status_payload(user_id)
+    mock_database["psych_status"][user_id] = payload
+    return payload
+
+
+def _parent_chat_context(parent_id: str, child_id: str | None) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any] | None, dict[str, Any]]:
+    parent = _ensure_parent(parent_id)
+    resolved_child_id = child_id or (parent.get("children") or [None])[0]
+    child_profile = _ensure_student_profile(resolved_child_id) if resolved_child_id else None
+    child_status = _student_status_snapshot(resolved_child_id) if resolved_child_id else None
+    latest_report = (
+        mock_database["psych_reports"].get(resolved_child_id, [])[-1]
+        if resolved_child_id and mock_database["psych_reports"].get(resolved_child_id)
+        else None
+    )
+    unread_alerts = sum(
+        1 for item in mock_database["alerts"].get(parent["parent_id"], []) if not item.get("is_read")
+    )
+    strategy = build_parent_strategy(
+        parent,
+        child_profile,
+        child_status=child_status,
+        latest_report=latest_report,
+        unread_alerts=unread_alerts,
+    )
+    return parent, child_profile, child_status, strategy
 
 
 def _normalize_parent_id(parent_id: Any) -> str:
@@ -505,6 +617,54 @@ def _build_status_payload(user_id: str) -> dict[str, Any]:
     }
 
 
+def _build_status_payload(user_id: str) -> dict[str, Any]:
+    student = _ensure_student_profile(user_id)
+    reports = mock_database["psych_reports"].get(user_id, [])
+    latest_report = reports[-1] if reports else None
+    latest_checkins = mock_database["checkins"].get(user_id, [])[-7:]
+    strategy = _refresh_student_strategy(user_id)
+
+    if latest_checkins:
+        metrics = {
+            "emotion": round(sum(item.get("emotion", 3) for item in latest_checkins) / len(latest_checkins), 1),
+            "sleep": round(sum(item.get("sleep", 3) for item in latest_checkins) / len(latest_checkins), 1),
+            "study": round(sum(item.get("study", 3) for item in latest_checkins) / len(latest_checkins), 1),
+            "social": round(sum(item.get("social", 3) for item in latest_checkins) / len(latest_checkins), 1),
+        }
+    else:
+        metrics = {"emotion": 3, "sleep": 3, "study": 3, "social": 3}
+
+    radar_scores = latest_report["radarScores"] if latest_report else [3, 3, 3, 3, 3, 3]
+    risk_level = latest_report["riskLevel"] if latest_report else 0
+
+    return {
+        "success": True,
+        "status": "ok",
+        "user_id": user_id,
+        "psych": {
+            "metrics": metrics,
+            "latest_report": {
+                "level": latest_report["level"] if latest_report else "normal",
+                "normalized": latest_report["normalized"] if latest_report else 0,
+                "date": latest_report["date"] if latest_report else None,
+            },
+        },
+        "radarScores": radar_scores,
+        "riskLevel": risk_level,
+        "strategy": strategy,
+        "summary": {
+            "profile": {
+                "user_id": user_id,
+                "name": student["name"],
+                "gender": student.get("gender", ""),
+                "age": student.get("age"),
+                "grade": student.get("grade", "初一"),
+                "school_stage": student.get("school_stage", infer_school_stage(student.get("age"), student.get("grade"))),
+            }
+        },
+    }
+
+
 def _ensure_demo_seed() -> None:
     _ensure_student_profile("student_001", phone="13800138000")
     parent = _ensure_parent("parent_0001", phone="13900139000")
@@ -658,14 +818,152 @@ def _proxy_chat(path: str, fallback_text: str):
     return jsonify({"success": True, "response": fallback_text, "ai_name": "暖暖", "type": "fallback"})
 
 
+@app.route("/api/student/profile", methods=["POST"])
+def update_student_profile():
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id", get_current_user())
+    profile = _upsert_student_profile(user_id, data)
+    payload = _student_status_snapshot(user_id)
+    _record_activity(
+        "profile",
+        "学生资料更新",
+        actor=user_id,
+        target=user_id,
+        details=f"stage={profile.get('school_stage', 'unknown')}",
+    )
+    return jsonify(
+        {
+            "success": True,
+            "message": "Student profile updated",
+            "profile": normalize_student_profile(profile),
+            "strategy": deepcopy(mock_database["strategy_state"].get(user_id, {})),
+            "status": payload,
+        }
+    )
+
+
+def _adapt_gateway_response(
+    text: str,
+    *,
+    role: str,
+    strategy: dict[str, Any],
+    profile: dict[str, Any] | None = None,
+    child_profile: dict[str, Any] | None = None,
+) -> str:
+    if not text:
+        return text
+
+    if role == "student":
+        student = normalize_student_profile(profile)
+        stage = student.get("school_stage", "unknown")
+        adapted = text.replace("您", "你").replace("家长", "家里人")
+        if stage == "primary":
+            adapted = adapted.replace("建议", "可以试试").replace("尝试", "试试")
+            if len(adapted) > 120:
+                adapted = adapted[:120].rstrip("，。； ") + "。"
+        elif stage == "senior":
+            adapted = adapted.replace("你要", "你可以").replace("必须", "尽量")
+        name = student.get("name") or ""
+        if name and not adapted.startswith(name):
+            adapted = f"{name}，{adapted}"
+        return adapted
+
+    child = normalize_student_profile(child_profile)
+    adapted = text.replace("你", "您")
+    if child.get("school_stage") == "primary":
+        adapted = adapted.replace("沟通", "和孩子说话")
+    if "建议" not in adapted and "可以先" not in adapted:
+        adapted = f"可以先这样做：{adapted}"
+    return adapted
+
+
+def _proxy_chat(path: str, fallback_text: str, *, role: str):
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    user_id = data.get("user_id", get_current_user())
+    session_id = str(data.get("session_id") or f"{role}_{user_id}")
+    if not message:
+        return format_error("Message is required")
+
+    outbound: dict[str, Any] = {
+        "user_id": user_id,
+        "message": message,
+        "session_id": session_id,
+        "user_type": role,
+    }
+
+    if role == "student":
+        local_profile = data.get("profile") if isinstance(data.get("profile"), dict) else {}
+        profile = _upsert_student_profile(user_id, local_profile)
+        psych_status = _student_status_snapshot(user_id)
+        outbound.update(
+            {
+                "profile": normalize_student_profile(profile),
+                "psych_status": psych_status,
+                "strategy": deepcopy(mock_database["strategy_state"].get(user_id, {})),
+            }
+        )
+    else:
+        requested_child_id = (data.get("child_id") or "").strip() or None
+        parent, child_profile, child_status, strategy = _parent_chat_context(user_id, requested_child_id)
+        outbound.update(
+            {
+                "profile": deepcopy(parent),
+                "child_id": child_profile.get("user_id") if child_profile else None,
+                "child_profile": normalize_student_profile(child_profile),
+                "child_status": child_status,
+                "strategy": strategy,
+            }
+        )
+
+    try:
+        resp = requests.post(_rag_url(path), json=outbound, timeout=30)
+        if resp.status_code == 200:
+            result = resp.json()
+            _record_model_usage(path, prompt_text=message, success=True)
+            _record_activity("chat", "模型对话请求", actor=user_id, target=path, details=f"role={role};session={session_id}")
+            adapted_response = _adapt_gateway_response(
+                result.get("response", result.get("answer", fallback_text)),
+                role=role,
+                strategy=outbound.get("strategy", {}),
+                profile=outbound.get("profile"),
+                child_profile=outbound.get("child_profile"),
+            )
+            return jsonify(
+                {
+                    "success": True,
+                    "response": adapted_response,
+                    "ai_name": "暖暖" if role == "student" else "家庭助手",
+                    "emotion": result.get("emotion", "neutral"),
+                    "crisis_level": result.get("crisis_level", "safe"),
+                    "type": result.get("type", "normal_support"),
+                    "strategy": outbound.get("strategy", {}),
+                    "session_id": session_id,
+                }
+            )
+    except Exception:
+        _record_model_usage(path, prompt_text=message, success=False)
+
+    return jsonify(
+        {
+            "success": True,
+            "response": fallback_text,
+            "ai_name": "暖暖" if role == "student" else "家庭助手",
+            "type": "fallback",
+            "session_id": session_id,
+            "strategy": outbound.get("strategy", {}),
+        }
+    )
+
+
 @app.route("/api/student/chat", methods=["POST"])
 def student_chat():
-    return _proxy_chat("/api/student/chat", "我在这里，愿意继续听你说。")
+    return _proxy_chat("/api/student/chat", "我在这里，愿意继续听你说。", role="student")
 
 
 @app.route("/api/parent/chat", methods=["POST"])
 def parent_chat():
-    return _proxy_chat("/api/parent/chat", "建议先稳定情绪，再从作息、沟通和陪伴三个方面逐步支持孩子。")
+    return _proxy_chat("/api/parent/chat", "建议先稳定情绪，再从作息、沟通和陪伴三个方面逐步支持孩子。", role="parent")
 
 
 @app.route("/api/student/checkin", methods=["POST"])
@@ -697,7 +995,8 @@ def student_checkin():
             )
 
     mock_database["psych_status"][user_id] = _build_status_payload(user_id)
-    _record_activity("assessment", "学生测评提交", actor=user_id, target=scale_id, details=f"report_id={report['id']}")
+    _refresh_student_strategy(user_id)
+    _record_activity("checkin", "学生打卡已同步策略", actor=user_id, target=user_id)
     return jsonify({"success": True, "message": "Check-in saved", "data": checkin_data})
 
 
@@ -721,6 +1020,7 @@ def submit_psych_test():
     report = _build_report(user_id, scale_id, answers)
     mock_database["psych_reports"].setdefault(user_id, []).append(report)
     mock_database["psych_status"][user_id] = _build_status_payload(user_id)
+    _refresh_student_strategy(user_id)
 
     if report["riskLevel"] >= 3:
         for parent_id in mock_database["bindings"]["child_to_parents"].get(user_id, []):
@@ -1033,6 +1333,7 @@ def admin_overview():
             },
             "app": app_summary,
             "rag": rag_summary,
+            "model_config": _admin_model_config_summary(),
             "model_usage": deepcopy(mock_database["admin"]["model_usage"]),
             "recent_logins": _admin_recent_events("login_events", limit=8),
             "recent_activity": _admin_recent_events("activity_events", limit=12),
@@ -1064,6 +1365,30 @@ def admin_activity():
 @app.route("/api/admin/model-usage", methods=["GET"])
 def admin_model_usage():
     return jsonify({"success": True, "usage": deepcopy(mock_database["admin"]["model_usage"])})
+
+
+@app.route("/api/admin/model-config", methods=["GET"])
+def admin_model_config():
+    return jsonify({"success": True, "config": _admin_model_config_summary()})
+
+
+@app.route("/api/admin/model-config", methods=["POST"])
+def admin_update_model_config():
+    payload = request.get_json(silent=True) or {}
+    try:
+        resp = requests.post(_rag_url("/api/admin/model-config"), json=payload, timeout=20)
+    except requests.RequestException as exc:
+        return jsonify({"success": False, "error": f"Model config update failed: {exc}"}), 502
+
+    if not resp.ok:
+        return Response(resp.content, resp.status_code, content_type=resp.headers.get("Content-Type", "application/json"))
+
+    data = resp.json()
+    config = data.get("config", {})
+    if config.get("chat_model"):
+        mock_database["admin"]["model_usage"]["model"] = config["chat_model"]
+    _record_activity("model_config", "模型配置更新", details=str(config))
+    return jsonify({"success": True, "config": config})
 
 
 @app.route("/api/gateway/rag/status", methods=["GET"])

@@ -56,8 +56,17 @@ function sendVerifyCode(phone) {
 /**
  * AI 心理师对话
  */
-function studentChat(userId, message) {
-  return request('/api/student/chat', { user_id: userId, message });
+function studentChat(userId, message, options = {}) {
+  return request('/api/student/chat', {
+    user_id: userId,
+    message,
+    session_id: options.sessionId,
+    profile: options.profile,
+  });
+}
+
+function updateStudentProfile(userId, profile) {
+  return request('/api/student/profile', { user_id: userId, ...profile });
 }
 
 /**
@@ -97,8 +106,13 @@ function getCheckinHistory(userId, days = 7) {
 /**
  * AI 家庭教育助手对话
  */
-function parentChat(userId, message) {
-  return request('/api/parent/chat', { user_id: userId, message });
+function parentChat(userId, message, options = {}) {
+  return request('/api/parent/chat', {
+    user_id: userId,
+    message,
+    session_id: options.sessionId,
+    child_id: options.childId,
+  });
 }
 
 /**
@@ -251,6 +265,7 @@ module.exports = {
   loginByWechat,
   sendVerifyCode,
   studentChat,
+  updateStudentProfile,
   submitCheckin,
   submitPsychTest,
   getPsychStatus,

@@ -1,4 +1,9 @@
-import { parentChat, getCurrentTime, getParentId } from "../../../utils/api";
+import {
+  parentChat,
+  getCurrentTime,
+  getParentId,
+  getChildId,
+} from "../../../utils/api";
 
 interface Message {
   id: number;
@@ -373,6 +378,31 @@ Page({
     this.scrollToBottom();
   },
 
+  async renderAIMessageGradually(
+    content: string,
+    emotion: number = 2,
+  ): Promise<void> {
+    const fullText = content || "";
+    const totalLength = fullText.length;
+    const step = totalLength > 200 ? 6 : totalLength > 100 ? 4 : 2;
+
+    this.setData({
+      streamingContent: "",
+      loading: true,
+    });
+
+    for (let i = 0; i < totalLength; i += step) {
+      if (this.data.stopRequested) {
+        return;
+      }
+      this.setData({ streamingContent: fullText.slice(0, i + step) });
+      this.scrollToBottom();
+      await new Promise((resolve) => setTimeout(resolve, 18));
+    }
+
+    this.addAIMessage(fullText, emotion);
+  },
+
   shouldShowTime(lastTime: string, currentTime: string): boolean {
     const lastParts = lastTime.split(":");
     const currentParts = currentTime.split(":");
@@ -387,16 +417,18 @@ Page({
 
   async callAI(text: string) {
     const userId = getParentId();
+    const childId = getChildId();
+    const sessionId = this.data.currentSessionId;
     this.setData({ streamingContent: "", loading: true, stopRequested: false });
 
     try {
-      const res = await parentChat(userId, text);
+      const res = await parentChat(userId, text, { sessionId, childId });
       if (this.data.stopRequested) {
         this.setData({ stopRequested: false });
         return;
       }
       const emotion = this.detectEmotion(res.response || "");
-      this.addAIMessage(
+      await this.renderAIMessageGradually(
         res.response || "抱歉，AI助手现在比较忙，请稍后再试 🙏",
         emotion,
       );
