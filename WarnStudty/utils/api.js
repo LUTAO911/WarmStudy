@@ -10,12 +10,18 @@ function getApiBase() {
 
 // 请求封装
 function request(url, data, method = 'POST') {
+  const token = wx.getStorageSync('auth_token');
+  const header = { 'Content-Type': 'application/json' };
+  if (token) {
+    header.Authorization = `Bearer ${token}`;
+  }
+
   return new Promise((resolve, reject) => {
     wx.request({
       url: `${getApiBase()}${url}`,
       data,
       method,
-      header: { 'Content-Type': 'application/json' },
+      header,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
@@ -229,12 +235,12 @@ function bindParentByToken(token, childId) {
 
 /** 获取孩子测评报告列表 */
 function getChildPsychReports(childId, limit = 5) {
-  return request(`/api/parent/child/${childId}/psych_reports?limit=${limit}`);
+  return request(`/api/parent/child/${childId}/psych_reports?limit=${limit}`, undefined, 'GET');
 }
 
 /** 获取孩子最新心理状态 */
 function getChildPsychStatus(childId) {
-  return request(`/api/parent/child/${childId}/psych/latest`);
+  return request(`/api/parent/child/${childId}/psych/latest`, undefined, 'GET');
 }
 
 // ===== 家长预警 =====
@@ -256,7 +262,7 @@ function markAllAlertsRead(parentId) {
 
 /** 获取测评报告详情（家长端） */
 function getChildPsychReportDetail(reportId) {
-  return request(`/api/parent/report/${reportId}`);
+  return request(`/api/parent/report/${reportId}`, undefined, 'GET');
 }
 
 // 导出所有函数

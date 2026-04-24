@@ -44,6 +44,7 @@ App<IAppOption>({
     wx.removeStorageSync('user_role');
     wx.removeStorageSync('user_name');
     wx.removeStorageSync('user_phone');
+    wx.removeStorageSync('auth_token');
     wx.removeStorageSync('bound_child_id');
   },
 });
