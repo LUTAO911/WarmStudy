@@ -6,24 +6,23 @@
   <title>WarmStudy | 面向青少年心理关怀与家校协同的教育智能体</title>
   <style>
     :root {
-      --bg: #f4f8fb;
-      --bg-deep: #071922;
-      --surface: rgba(255, 255, 255, 0.92);
-      --surface-strong: #ffffff;
-      --surface-dark: rgba(8, 34, 45, 0.82);
-      --line: rgba(26, 91, 120, 0.14);
-      --text: #0b2230;
-      --muted: #567182;
-      --teal: #0e938b;
-      --cyan: #2da7ff;
-      --navy: #0c3d62;
-      --gold: #f1be48;
-      --mint: #dff9ef;
-      --shadow: 0 24px 70px rgba(8, 39, 58, 0.12);
-      --radius-xl: 30px;
-      --radius-lg: 22px;
-      --radius-md: 16px;
-      --max: 1200px;
+      --bg: #f6fbff;
+      --bg-soft: #ebf5fb;
+      --paper: rgba(255, 255, 255, 0.92);
+      --paper-strong: #ffffff;
+      --ink: #092433;
+      --muted: #5e7788;
+      --line: rgba(9, 36, 51, 0.1);
+      --cyan: #1d87ff;
+      --teal: #0ea58f;
+      --deep: #062234;
+      --gold: #f1c35b;
+      --shadow: 0 28px 70px rgba(9, 36, 51, 0.12);
+      --shadow-strong: 0 34px 90px rgba(5, 28, 44, 0.22);
+      --radius-xl: 34px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --max: 1180px;
     }
 
     * {
@@ -37,11 +36,12 @@
     body {
       margin: 0;
       font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      color: var(--text);
+      color: var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(45, 167, 255, 0.16), transparent 26%),
-        radial-gradient(circle at top right, rgba(14, 147, 139, 0.14), transparent 28%),
-        linear-gradient(180deg, #fbfdff 0%, #eef5f8 48%, #f8fcff 100%);
+        radial-gradient(circle at 0% 0%, rgba(29, 135, 255, 0.18), transparent 28%),
+        radial-gradient(circle at 100% 12%, rgba(14, 165, 143, 0.16), transparent 24%),
+        linear-gradient(180deg, #fafdff 0%, var(--bg) 56%, #eef7fb 100%);
+      overflow-x: hidden;
     }
 
     img {
@@ -55,21 +55,21 @@
     }
 
     .shell {
-      width: min(var(--max), calc(100% - 40px));
+      width: min(var(--max), calc(100% - 32px));
       margin: 0 auto;
     }
 
     .topbar {
       position: sticky;
       top: 0;
-      z-index: 20;
-      backdrop-filter: blur(18px);
-      background: rgba(244, 248, 251, 0.78);
-      border-bottom: 1px solid rgba(12, 61, 98, 0.08);
+      z-index: 40;
+      backdrop-filter: blur(16px);
+      background: rgba(246, 251, 255, 0.82);
+      border-bottom: 1px solid rgba(9, 36, 51, 0.06);
     }
 
     .topbar-inner {
-      width: min(var(--max), calc(100% - 40px));
+      width: min(var(--max), calc(100% - 32px));
       margin: 0 auto;
       padding: 16px 0;
       display: flex;
@@ -85,23 +85,24 @@
       min-width: 0;
     }
 
-    .brand-mark {
-      width: 48px;
-      height: 48px;
+    .brand-badge {
+      width: 50px;
+      height: 50px;
       border-radius: 16px;
       background:
-        radial-gradient(circle at 30% 30%, rgba(255,255,255,0.68), transparent 34%),
-        linear-gradient(145deg, #17b6ab, #1766d1);
-      box-shadow: 0 18px 30px rgba(23, 102, 209, 0.18);
+        radial-gradient(circle at 35% 25%, rgba(255,255,255,0.72), transparent 30%),
+        linear-gradient(145deg, #10b9ab, #2167e3);
+      box-shadow: 0 18px 34px rgba(33, 103, 227, 0.22);
       position: relative;
+      flex-shrink: 0;
     }
 
-    .brand-mark::after {
+    .brand-badge::after {
       content: "";
       position: absolute;
       inset: 11px;
       border-radius: 12px;
-      border: 2px solid rgba(255,255,255,0.74);
+      border: 2px solid rgba(255,255,255,0.72);
     }
 
     .brand-copy strong {
@@ -115,86 +116,94 @@
       margin-top: 2px;
       font-size: 12px;
       color: var(--muted);
+      white-space: nowrap;
     }
 
     .nav {
       display: flex;
       align-items: center;
-      gap: 18px;
+      gap: 16px;
       flex-wrap: wrap;
       justify-content: flex-end;
     }
 
-    .nav a {
+    .nav a.link {
       font-size: 14px;
       color: var(--muted);
       transition: color 0.2s ease;
     }
 
-    .nav a:hover {
-      color: var(--navy);
+    .nav a.link:hover {
+      color: var(--ink);
     }
 
-    .cta {
+    .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      border-radius: 999px;
       padding: 12px 18px;
-      font-weight: 700;
+      border-radius: 999px;
       font-size: 14px;
+      font-weight: 700;
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      border: 1px solid transparent;
     }
 
-    .cta.primary {
-      color: #fff;
-      background: linear-gradient(135deg, #0f8f8b, #2267da);
-      box-shadow: 0 16px 36px rgba(34, 103, 218, 0.22);
-    }
-
-    .cta.secondary {
-      color: var(--navy);
-      background: rgba(255,255,255,0.82);
-      border: 1px solid rgba(12, 61, 98, 0.12);
-    }
-
-    .cta:hover {
+    .btn:hover {
       transform: translateY(-2px);
     }
 
-    .hero {
-      padding: 42px 0 28px;
+    .btn.primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--teal), var(--cyan));
+      box-shadow: 0 18px 36px rgba(29, 135, 255, 0.24);
     }
 
-    .hero-grid {
+    .btn.secondary {
+      color: var(--deep);
+      background: rgba(255,255,255,0.82);
+      border-color: rgba(9, 36, 51, 0.08);
+    }
+
+    .btn.dark {
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.14);
+    }
+
+    .hero {
+      padding: 34px 0 24px;
+    }
+
+    .hero-frame {
       display: grid;
       grid-template-columns: 1.08fr 0.92fr;
-      gap: 28px;
+      gap: 22px;
       align-items: stretch;
     }
 
-    .hero-copy {
+    .hero-main {
+      position: relative;
+      overflow: hidden;
       padding: 38px;
       border-radius: var(--radius-xl);
       background:
-        linear-gradient(160deg, rgba(255,255,255,0.96), rgba(235, 247, 252, 0.92)),
-        linear-gradient(135deg, rgba(45,167,255,0.08), rgba(14,147,139,0.08));
-      border: 1px solid rgba(12, 61, 98, 0.08);
+        linear-gradient(140deg, rgba(255,255,255,0.97), rgba(236, 247, 253, 0.94)),
+        linear-gradient(145deg, rgba(29,135,255,0.08), rgba(14,165,143,0.08));
+      border: 1px solid rgba(9, 36, 51, 0.08);
       box-shadow: var(--shadow);
-      position: relative;
-      overflow: hidden;
     }
 
-    .hero-copy::after {
+    .hero-main::before {
       content: "";
       position: absolute;
       right: -80px;
-      top: -60px;
-      width: 260px;
-      height: 260px;
+      top: -80px;
+      width: 280px;
+      height: 280px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(45, 167, 255, 0.18), transparent 66%);
+      background: radial-gradient(circle, rgba(29, 135, 255, 0.16), transparent 68%);
       pointer-events: none;
     }
 
@@ -203,155 +212,169 @@
       align-items: center;
       gap: 8px;
       margin-bottom: 18px;
-      padding: 8px 14px;
+      padding: 9px 14px;
       border-radius: 999px;
-      background: var(--mint);
+      background: rgba(14, 165, 143, 0.12);
       color: var(--teal);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(34px, 5vw, 60px);
-      line-height: 1.08;
-      letter-spacing: -0.03em;
+      font-size: clamp(38px, 6vw, 66px);
+      line-height: 1.03;
+      letter-spacing: -0.05em;
+      max-width: 760px;
     }
 
-    .hero-copy p {
+    .hero-main p {
       margin: 20px 0 0;
+      max-width: 690px;
       font-size: 17px;
       line-height: 1.9;
       color: var(--muted);
-      max-width: 640px;
     }
 
     .hero-actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 14px;
-      margin-top: 30px;
-    }
-
-    .hero-metrics {
-      margin-top: 34px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
+      margin-top: 28px;
     }
 
-    .metric {
+    .hero-points {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .hero-point {
       padding: 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.76);
-      border: 1px solid rgba(12, 61, 98, 0.08);
+      border-radius: 20px;
+      background: rgba(255,255,255,0.74);
+      border: 1px solid rgba(9, 36, 51, 0.08);
     }
 
-    .metric strong {
+    .hero-point strong {
       display: block;
-      font-size: 28px;
-      color: var(--navy);
+      font-size: 14px;
+      margin-bottom: 8px;
     }
 
-    .metric span {
+    .hero-point span {
       display: block;
-      margin-top: 8px;
       color: var(--muted);
       font-size: 13px;
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
-    .hero-panel {
-      min-height: 100%;
-      padding: 28px;
+    .hero-side {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 18px;
+    }
+
+    .hero-status {
+      padding: 24px;
       border-radius: var(--radius-xl);
       background:
-        linear-gradient(180deg, rgba(7, 25, 34, 0.96), rgba(10, 42, 57, 0.94));
-      color: #f2fbff;
-      box-shadow: 0 28px 60px rgba(7, 25, 34, 0.28);
+        linear-gradient(180deg, rgba(7, 34, 52, 0.96), rgba(9, 53, 80, 0.94));
+      color: #effafe;
+      box-shadow: var(--shadow-strong);
       position: relative;
       overflow: hidden;
     }
 
-    .hero-panel::before,
-    .hero-panel::after {
+    .hero-status::after {
       content: "";
       position: absolute;
+      right: -60px;
+      bottom: -70px;
+      width: 220px;
+      height: 220px;
       border-radius: 50%;
+      background: radial-gradient(circle, rgba(241,195,91,0.22), transparent 70%);
       pointer-events: none;
     }
 
-    .hero-panel::before {
-      width: 320px;
-      height: 320px;
-      right: -110px;
-      top: -120px;
-      background: radial-gradient(circle, rgba(45, 167, 255, 0.3), transparent 70%);
-    }
-
-    .hero-panel::after {
-      width: 240px;
-      height: 240px;
-      left: -80px;
-      bottom: -120px;
-      background: radial-gradient(circle, rgba(241, 190, 72, 0.18), transparent 70%);
-    }
-
-    .panel-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      color: #a5f3fc;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-    }
-
-    .hero-panel h2 {
-      margin: 18px 0 12px;
-      font-size: 28px;
+    .hero-status h2 {
+      margin: 12px 0 10px;
+      font-size: 24px;
       line-height: 1.3;
     }
 
-    .hero-panel p {
-      margin: 0 0 22px;
-      color: rgba(226, 245, 250, 0.8);
+    .hero-status p {
+      margin: 0;
+      color: rgba(231, 246, 252, 0.78);
+      font-size: 14px;
       line-height: 1.8;
-      font-size: 15px;
     }
 
-    .hero-list {
+    .status-list {
+      margin-top: 18px;
       display: grid;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 10px;
     }
 
-    .hero-list div {
+    .status-item {
       padding: 14px 16px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.08);
       font-size: 14px;
-      line-height: 1.7;
+      line-height: 1.65;
     }
 
-    .hero-image {
-      border-radius: 22px;
+    .hero-visual {
+      border-radius: var(--radius-xl);
       overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: var(--shadow);
+      min-height: 100%;
+      position: relative;
+    }
+
+    .hero-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      min-height: 360px;
+    }
+
+    .hero-overlay {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      padding: 18px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(7, 34, 52, 0.1), rgba(7, 34, 52, 0.78));
+      color: #fff;
+    }
+
+    .hero-overlay strong {
+      display: block;
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .hero-overlay span {
+      display: block;
+      font-size: 13px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.82);
     }
 
     section.block {
-      padding: 28px 0;
+      padding: 26px 0;
     }
 
     .section-head {
       display: flex;
-      align-items: end;
+      align-items: flex-end;
       justify-content: space-between;
       gap: 16px;
       margin-bottom: 20px;
@@ -359,246 +382,183 @@
 
     .section-head h2 {
       margin: 0;
-      font-size: clamp(28px, 3vw, 40px);
-      letter-spacing: -0.03em;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.1;
+      letter-spacing: -0.04em;
     }
 
     .section-head p {
       margin: 10px 0 0;
-      max-width: 720px;
       color: var(--muted);
       font-size: 15px;
-      line-height: 1.8;
+      line-height: 1.85;
+      max-width: 720px;
     }
 
-    .section-note {
+    .section-tag {
       color: var(--teal);
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 0.06em;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
-    .problem-grid,
-    .advantage-grid,
-    .system-grid {
+    .grid-3,
+    .grid-2,
+    .story-grid,
+    .docs-grid {
       display: grid;
       gap: 18px;
     }
 
-    .problem-grid {
+    .grid-3 {
       grid-template-columns: repeat(3, 1fr);
     }
 
-    .problem-card,
-    .advantage-card,
-    .system-card,
-    .image-card,
-    .flow-card,
-    .final-panel {
+    .grid-2,
+    .docs-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .story-grid {
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: start;
+    }
+
+    .panel,
+    .story-panel,
+    .visual-panel,
+    .doc-card,
+    .closing {
       border-radius: var(--radius-lg);
-      background: var(--surface);
-      border: 1px solid rgba(12, 61, 98, 0.08);
+      background: var(--paper);
+      border: 1px solid rgba(9, 36, 51, 0.08);
       box-shadow: var(--shadow);
       overflow: hidden;
     }
 
-    .problem-card {
+    .panel {
       padding: 24px;
       min-height: 100%;
     }
 
-    .problem-card .num {
+    .panel-number {
       display: inline-flex;
-      width: 40px;
-      height: 40px;
       align-items: center;
       justify-content: center;
-      border-radius: 12px;
-      background: linear-gradient(135deg, rgba(34,103,218,0.16), rgba(14,147,139,0.18));
-      color: var(--navy);
-      font-weight: 800;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
       margin-bottom: 16px;
+      background: linear-gradient(135deg, rgba(29,135,255,0.18), rgba(14,165,143,0.18));
+      color: var(--deep);
+      font-weight: 800;
     }
 
-    .problem-card h3,
-    .advantage-card h3,
-    .system-card h3,
-    .flow-copy h3 {
+    .panel h3,
+    .story-copy h3,
+    .doc-card h3 {
       margin: 0;
       font-size: 22px;
+      line-height: 1.35;
     }
 
-    .problem-card p,
-    .advantage-card p,
-    .system-card p,
-    .flow-copy p,
-    .image-card p,
-    .final-panel p {
+    .panel p,
+    .story-copy p,
+    .doc-card p,
+    .closing p {
       margin: 12px 0 0;
-      line-height: 1.8;
       color: var(--muted);
       font-size: 15px;
+      line-height: 1.85;
     }
 
-    .problem-card ul,
-    .advantage-card ul,
-    .system-card ul,
-    .flow-copy ul,
-    .final-panel ul {
+    .panel ul,
+    .story-copy ul,
+    .closing ul {
       margin: 14px 0 0;
       padding-left: 18px;
-      color: var(--text);
       line-height: 1.9;
       font-size: 14px;
     }
 
-    .system-grid {
-      grid-template-columns: 1.15fr 0.85fr;
-      align-items: start;
-    }
-
-    .system-card {
-      padding: 26px;
-    }
-
-    .stack-list {
-      margin-top: 18px;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .stack-item {
-      padding: 14px 16px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.88);
-      border: 1px solid rgba(12, 61, 98, 0.08);
-    }
-
-    .stack-item strong {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 15px;
-    }
-
-    .stack-item span {
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    .image-card img {
-      width: 100%;
-      aspect-ratio: 16 / 10;
-      object-fit: cover;
-    }
-
-    .image-card .copy {
-      padding: 22px;
-    }
-
-    .advantage-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-
-    .advantage-card {
-      padding: 24px;
-      position: relative;
-    }
-
-    .advantage-card::before {
-      content: "";
-      position: absolute;
-      inset: 0 auto 0 0;
-      width: 5px;
-      background: linear-gradient(180deg, var(--teal), var(--cyan));
-    }
-
-    .flow-wrap {
-      display: grid;
-      gap: 18px;
-    }
-
-    .flow-card {
+    .story-panel {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      background: var(--surface-strong);
+      background: var(--paper-strong);
     }
 
-    .flow-card:nth-child(even) {
+    .story-panel.reverse {
       grid-template-columns: 1fr 1fr;
     }
 
-    .flow-card img {
+    .story-panel img,
+    .visual-panel img {
       width: 100%;
       height: 100%;
-      min-height: 260px;
       object-fit: cover;
     }
 
-    .flow-copy {
+    .story-copy {
       padding: 28px;
     }
 
-    .flow-copy .tag {
+    .story-chip {
       display: inline-flex;
       margin-bottom: 12px;
       padding: 6px 12px;
       border-radius: 999px;
-      background: rgba(14,147,139,0.1);
+      background: rgba(14, 165, 143, 0.1);
       color: var(--teal);
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
+      letter-spacing: 0.04em;
     }
 
-    .gallery-grid {
+    .visual-stack {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
       gap: 18px;
+    }
+
+    .visual-panel .copy {
+      padding: 22px;
+    }
+
+    .visual-panel .copy strong {
+      display: block;
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .visual-panel .copy span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.75;
     }
 
     .docs-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 18px;
+      margin-top: 6px;
     }
 
     .doc-card {
       padding: 24px;
-      border-radius: var(--radius-lg);
-      background: var(--surface);
-      border: 1px solid rgba(12, 61, 98, 0.08);
-      box-shadow: var(--shadow);
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
       min-height: 100%;
     }
 
-    .doc-card .doc-tag {
+    .doc-tag {
       display: inline-flex;
       width: fit-content;
       padding: 6px 12px;
       border-radius: 999px;
-      background: rgba(34,103,218,0.08);
-      color: var(--navy);
+      background: rgba(29, 135, 255, 0.1);
+      color: var(--cyan);
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: 0.04em;
-    }
-
-    .doc-card h3 {
-      margin: 0;
-      font-size: 21px;
-      line-height: 1.35;
-    }
-
-    .doc-card p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.8;
-      font-size: 14px;
     }
 
     .doc-actions {
@@ -614,87 +574,83 @@
       justify-content: center;
       padding: 10px 14px;
       border-radius: 999px;
-      font-size: 13px;
-      font-weight: 700;
-      background: rgba(14,147,139,0.1);
+      background: rgba(14, 165, 143, 0.1);
       color: var(--teal);
+      font-size: 13px;
+      font-weight: 800;
     }
 
-    .final-panel {
-      padding: 28px;
+    .closing {
+      padding: 30px;
       background:
-        linear-gradient(160deg, rgba(8, 34, 45, 0.96), rgba(10, 56, 78, 0.92));
-      color: #eefbff;
+        linear-gradient(155deg, rgba(8, 35, 52, 0.98), rgba(10, 62, 87, 0.94));
+      color: #effbff;
+      box-shadow: var(--shadow-strong);
     }
 
-    .final-panel h2 {
+    .closing h2 {
       margin: 0;
-      font-size: clamp(28px, 4vw, 44px);
-      line-height: 1.18;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.15;
       max-width: 760px;
+      letter-spacing: -0.04em;
     }
 
-    .final-panel p,
-    .final-panel ul {
-      color: rgba(230, 245, 252, 0.82);
+    .closing p,
+    .closing ul {
+      color: rgba(232, 247, 252, 0.82);
     }
 
-    .final-actions {
+    .closing-actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 14px;
-      margin-top: 24px;
+      gap: 12px;
+      margin-top: 22px;
     }
 
-    .foot {
-      padding: 12px 0 40px;
+    footer {
+      padding: 16px 0 38px;
+      text-align: center;
       color: var(--muted);
       font-size: 13px;
-      text-align: center;
     }
 
-    @media (max-width: 1080px) {
-      .hero-grid,
-      .system-grid,
-      .problem-grid,
-      .advantage-grid,
-      .gallery-grid,
-      .flow-card {
+    @media (max-width: 1100px) {
+      .hero-frame,
+      .story-grid,
+      .grid-3,
+      .grid-2,
+      .docs-grid,
+      .story-panel {
         grid-template-columns: 1fr;
       }
 
-      .hero-metrics,
-      .stack-list {
-        grid-template-columns: repeat(2, 1fr);
+      .hero-points {
+        grid-template-columns: 1fr;
       }
     }
 
-    @media (max-width: 720px) {
-      .shell,
-      .topbar-inner {
-        width: min(var(--max), calc(100% - 24px));
+    @media (max-width: 760px) {
+      .topbar-inner,
+      .shell {
+        width: min(var(--max), calc(100% - 20px));
       }
 
-      .hero-copy,
-      .hero-panel,
-      .problem-card,
-      .advantage-card,
-      .system-card,
-      .flow-copy,
-      .final-panel {
+      .hero-main,
+      .hero-status,
+      .panel,
+      .story-copy,
+      .doc-card,
+      .closing {
         padding: 22px;
       }
 
-      .hero-metrics {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .nav {
-        gap: 12px;
-      }
-
-      .nav a {
+      .nav a.link {
         display: none;
+      }
+
+      .hero-visual img {
+        min-height: 280px;
       }
     }
   </style>
@@ -703,112 +659,116 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <div class="brand-mark"></div>
+        <div class="brand-badge"></div>
         <div class="brand-copy">
           <strong>WarmStudy</strong>
-          <span>面向青少年心理关怀与家校协同的教育智能体</span>
+          <span>面向青少年心理关怀与家校协同支持的教育智能体</span>
         </div>
       </div>
       <nav class="nav">
-        <a href="#problem">比赛价值</a>
-        <a href="#system">系统方案</a>
-        <a href="#advantage">核心优势</a>
-        <a href="#flow">流程闭环</a>
-        <a href="#gallery">关键页面</a>
-        <a class="cta secondary" href="/console">后台控制台</a>
+        <a class="link" href="#value">比赛价值</a>
+        <a class="link" href="#system">系统方案</a>
+        <a class="link" href="#flows">流程闭环</a>
+        <a class="link" href="#docs">仓库与文档</a>
+        <a class="btn secondary" href="/console">后台控制台</a>
       </nav>
     </div>
   </header>
 
   <main>
     <section class="hero">
-      <div class="shell hero-grid">
-        <div class="hero-copy">
+      <div class="shell hero-frame">
+        <div class="hero-main">
           <div class="eyebrow">2026 广东省大学生计算机设计大赛 · 教育方向助育场景</div>
-          <h1>不是泛化聊天工具，<br>而是一套可落地、可演示、可解释的教育智能体系统。</h1>
+          <h1>不是一个泛化聊天框，<br>而是一套真正围绕教育心理支持场景构建的智能体系统。</h1>
           <p>
             WarmStudy 聚焦“学生难表达、家长难理解、学校难持续支持”的真实教育问题，
-            将学生端、家长端、AI 对话、心理评测、风险提醒、RAG 知识库与统一后台整合为一个闭环。
-            对比赛而言，它既有清晰场景，又有完整系统，又能突出大模型与智能体的真正价值。
+            将学生端、家长端、心理评测、RAG 知识增强、风险提醒与统一后台串成一个闭环。
+            它更适合比赛展示的原因，不是功能堆得多，而是场景真实、系统完整、技术解释得清。
           </p>
           <div class="hero-actions">
-            <a class="cta primary" href="#problem">查看比赛亮点</a>
-            <a class="cta secondary" href="#gallery">浏览系统界面</a>
+            <a class="btn primary" href="#value">查看比赛亮点</a>
+            <a class="btn secondary" href="https://github.com/LUTAO581314/WarmStudy" target="_blank" rel="noreferrer">查看 GitHub 仓库</a>
           </div>
-          <div class="hero-metrics">
-            <div class="metric">
-              <strong>2 端</strong>
-              <span>学生端与家长端分角色协同，不共用一套回答人格</span>
+          <div class="hero-points">
+            <div class="hero-point">
+              <strong>真实问题，不是泛化问答</strong>
+              <span>从青少年心理支持和家校沟通痛点出发，场景清晰，目标明确。</span>
             </div>
-            <div class="metric">
-              <strong>1 套</strong>
-              <span>统一管理后台承接模型配置、知识库运营与系统观察</span>
+            <div class="hero-point">
+              <strong>完整原型，不是单页 Demo</strong>
+              <span>学生端、家长端、后台、网关、RAG 服务与文档说明全部贯通。</span>
             </div>
-            <div class="metric">
-              <strong>Agent</strong>
-              <span>状态驱动策略、意图路由、风险感知与工作流编排</span>
-            </div>
-            <div class="metric">
-              <strong>RAG</strong>
-              <span>向量检索、重排与知识增强，支撑更可靠的心理支持</span>
+            <div class="hero-point">
+              <strong>技术可解释，不是只喊大模型</strong>
+              <span>状态驱动策略、角色差异、RAG 流程和后台观测都能直观看见。</span>
             </div>
           </div>
         </div>
 
-        <aside class="hero-panel">
-          <div class="panel-tag">Competition Ready</div>
-          <h2>比赛期望看到的，不只是“用了大模型”，而是“为什么这个系统对场景真正有帮助”。</h2>
-          <p>WarmStudy 的设计重点不是堆功能，而是围绕教育心理支持场景，构建一个能理解角色、理解状态、理解长期关系的系统。</p>
-          <div class="hero-list">
-            <div>真实问题导向：从学生情绪表达困难、家长支持方式缺失、家校协同弱连接出发。</div>
-            <div>完整系统闭环：前端 App、统一网关、RAG 服务、后台控制台全部贯通，可直接演示。</div>
-            <div>智能体特征明显：不是静态 prompt，而是结合年龄、学段、评测状态和最近打卡动态调整策略。</div>
+        <div class="hero-side">
+          <div class="hero-status">
+            <div class="eyebrow" style="background:rgba(255,255,255,0.08);color:#9fe8ff;">Competition Ready</div>
+            <h2>评委真正想看到的，是技术如何为场景服务。</h2>
+            <p>WarmStudy 的设计不是堆模块，而是围绕“表达、理解、协同、提醒”四个环节，把智能体做成真正能工作的系统。</p>
+            <div class="status-list">
+              <div class="status-item">学生端更强调“先接住情绪，再提供支持建议”。</div>
+              <div class="status-item">家长端更强调“先帮助理解，再给结构化行动方案”。</div>
+              <div class="status-item">统一后台承接模型配置、知识库运营、用户观察与答辩演示。</div>
+            </div>
           </div>
-          <div class="hero-image">
-            <img src="{{ url_for('static', filename='website/emotion-analysis.jpg') }}" alt="情绪分析示意图">
+
+          <div class="hero-visual">
+            <img src="{{ url_for('static', filename='website/emotion-analysis.jpg') }}" alt="情绪分析视觉图">
+            <div class="hero-overlay">
+              <strong>情绪分析与状态感知</strong>
+              <span>让系统真正理解“此刻的学生状态”，而不是只处理“这句话的字面意思”。</span>
+            </div>
           </div>
-        </aside>
+        </div>
       </div>
     </section>
 
-    <section class="block" id="problem">
+    <section class="block" id="value">
       <div class="shell">
         <div class="section-head">
           <div>
-            <div class="section-note">Why It Matters</div>
-            <h2>围绕比赛最看重的三件事来设计产品价值</h2>
-            <p>一个好的比赛作品，不只是界面好看，而是要能回答三个问题：场景真实吗、系统完整吗、技术是否真正服务于问题解决。WarmStudy 的设计就是围绕这三点展开。</p>
+            <div class="section-tag">Why It Works</div>
+            <h2>为什么它更像一个比赛作品，而不是一个普通 AI 页面</h2>
+            <p>比赛场景里，真正能打动评委的不是“我也接了大模型”，而是“我为什么做这个问题、我怎么把系统做完整、我的技术为什么合理”。</p>
           </div>
         </div>
-        <div class="problem-grid">
-          <article class="problem-card">
-            <div class="num">01</div>
-            <h3>真实教育问题，不是泛化问答</h3>
-            <p>我们聚焦青少年心理关怀与家校协同支持，覆盖学生表达、家长理解、学校观察三个真实环节。</p>
+        <div class="grid-3">
+          <article class="panel">
+            <div class="panel-number">01</div>
+            <h3>真实教育问题驱动</h3>
+            <p>WarmStudy 关注的是青少年情绪表达困难、家长支持方式缺失、家校协同弱连接这些真实问题，而不是泛化聊天。</p>
             <ul>
-              <li>学生端重视低门槛表达与情绪接住</li>
-              <li>家长端重视理解孩子状态与获取行动建议</li>
-              <li>后台端重视统一观察、预警与知识运营</li>
+              <li>学生端重视低门槛表达与被理解</li>
+              <li>家长端重视理解孩子状态与获取建议</li>
+              <li>后台端重视持续观察、知识运营与提醒</li>
             </ul>
           </article>
-          <article class="problem-card">
-            <div class="num">02</div>
-            <h3>完整系统，不是单页 Demo</h3>
-            <p>作品不仅有 AI 对话，还包含评测、报告、绑定关系、后台、模型配置与知识库管理，具备完整演示链路。</p>
+
+          <article class="panel">
+            <div class="panel-number">02</div>
+            <h3>完整系统闭环</h3>
+            <p>作品不只停留在单次问答，而是覆盖评测、报告、绑定、后台、模型配置、RAG 管理与网关治理。</p>
             <ul>
-              <li>学生端 / 家长端 / 管理后台三端协同</li>
-              <li>网关、RAG 服务、知识库、模型调用闭环</li>
-              <li>更符合比赛对“完整原型系统”的期待</li>
+              <li>学生端 / 家长端 / 控制台三端协同</li>
+              <li>统一网关连接前端、模型与知识库</li>
+              <li>更符合比赛对完整原型系统的期待</li>
             </ul>
           </article>
-          <article class="problem-card">
-            <div class="num">03</div>
-            <h3>技术解释得清，不是只喊大模型</h3>
-            <p>WarmStudy 能明确展示 Agent + RAG 如何参与问题解决，并把流程拆解到可视化页面与后台验证中。</p>
+
+          <article class="panel">
+            <div class="panel-number">03</div>
+            <h3>技术能被说明白</h3>
+            <p>从状态驱动策略到 RAG 检索链路，再到后台控制台，WarmStudy 可以把“技术为什么有效”直接展示出来。</p>
             <ul>
-              <li>状态驱动策略和角色化输出逻辑可解释</li>
-              <li>RAG 检索、向量化、重排流程可展示</li>
-              <li>后台可以观察模型与知识库运行状态</li>
+              <li>角色化输出逻辑可解释</li>
+              <li>向量化、召回、重排流程可展示</li>
+              <li>后台能证明系统并非静态概念图</li>
             </ul>
           </article>
         </div>
@@ -816,197 +776,94 @@
     </section>
 
     <section class="block" id="system">
-      <div class="shell">
-        <div class="section-head">
-          <div>
-            <div class="section-note">System Design</div>
-            <h2>用“产品完整性 + 技术路线清晰性”支撑比赛说服力</h2>
-            <p>官网不只是展示结果，也要帮助评委快速理解系统怎样工作、为什么这样设计、技术和场景如何对齐。</p>
-          </div>
-        </div>
-        <div class="system-grid">
-          <article class="system-card">
-            <h3>系统由三层组成：场景入口、智能体中台、知识增强与运维后台</h3>
-            <p>学生与家长通过前端 App 进入系统，统一网关负责聚合接口与路由策略，Agent 与 RAG 组合提供具备角色区分和知识增强的回答能力，后台则负责模型配置、用户观察、风险提醒和知识库维护。</p>
-            <div class="stack-list">
-              <div class="stack-item">
-                <strong>前端 App</strong>
-                <span>基于微信小程序技术实现的 App 前端，覆盖学生端与家长端核心能力。</span>
-              </div>
-              <div class="stack-item">
-                <strong>统一网关</strong>
-                <span>集中暴露服务入口，兼顾状态检查、RAG 代理、后台控制台与接口治理。</span>
-              </div>
-              <div class="stack-item">
-                <strong>Agent 策略层</strong>
-                <span>意图路由、状态驱动策略、多角色回答差异化与工作流编排。</span>
-              </div>
-              <div class="stack-item">
-                <strong>RAG 能力层</strong>
-                <span>Embedding、向量数据库、混合检索与重排，提升回答相关性与可靠性。</span>
-              </div>
+      <div class="shell story-grid">
+        <div>
+          <div class="section-head" style="margin-bottom:18px;">
+            <div>
+              <div class="section-tag">System Design</div>
+              <h2>系统方案不是堆料，而是按场景拆层</h2>
+              <p>学生和家长从前端进入系统，统一网关聚合服务入口，Agent 策略层区分角色与状态，RAG 层提供知识增强，后台负责模型、知识库与系统观察。</p>
             </div>
-            <ul>
-              <li>学生端优先“先接住情绪，再给支持建议”</li>
-              <li>家长端优先“先帮助理解，再给下一步行动”</li>
-              <li>统一后台帮助评委直观看到模型、知识库与业务状态如何串起来</li>
-            </ul>
-          </article>
+          </div>
 
-          <article class="image-card">
-            <img src="{{ url_for('static', filename='website/core-architecture.jpg') }}" alt="WarmStudy 整体核心架构">
+          <article class="story-panel">
+            <img src="{{ url_for('static', filename='website/core-architecture.jpg') }}" alt="WarmStudy 核心架构图">
+            <div class="story-copy">
+              <div class="story-chip">核心架构</div>
+              <h3>Agent + 状态 + RAG 共同工作</h3>
+              <p>从意图路由、状态驱动策略、ReAct 机制，到混合搜索、线程安全记忆与工作流引擎，WarmStudy 更接近“场景智能体系统”而不是单点大模型应用。</p>
+              <ul>
+                <li>学生端优先陪伴与低压表达</li>
+                <li>家长端优先结构化建议与沟通支持</li>
+                <li>后台帮助评委直接看懂模型与业务如何串联</li>
+              </ul>
+            </div>
+          </article>
+        </div>
+
+        <div class="visual-stack">
+          <article class="visual-panel">
+            <img src="{{ url_for('static', filename='website/model-design.jpg') }}" alt="模型链路设计">
             <div class="copy">
-              <h3>项目整体核心架构</h3>
-              <p>从意图路由、状态驱动、ReAct、混合搜索到线程安全记忆管理与工作流引擎，WarmStudy 强调的是“场景智能体”的完整能力组合，而不是单点能力堆砌。</p>
+              <strong>模型链路设计</strong>
+              <span>通过 LangChain 协调大模型与 Embedding 模型，把自然语言理解和知识表示两条路线都讲清楚。</span>
             </div>
           </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="block" id="advantage">
-      <div class="shell">
-        <div class="section-head">
-          <div>
-            <div class="section-note">Competitive Edge</div>
-            <h2>围绕评审预期，突出 WarmStudy 的五类核心优势</h2>
-            <p>这些优势不是抽象口号，而是能被页面、流程图、后台与实际接口共同印证的系统能力。</p>
-          </div>
-        </div>
-        <div class="advantage-grid">
-          <article class="advantage-card">
-            <h3>状态驱动，不是固定 Prompt</h3>
-            <p>系统会根据年龄、学段、最近打卡、测评结果与历史会话动态调整输出策略，让同一个问题在不同状态下得到不同层级、不同语气的回答。</p>
-          </article>
-          <article class="advantage-card">
-            <h3>双端双人格，贴合真实使用关系</h3>
-            <p>学生端强调陪伴与低压表达，家长端强调结构化建议与沟通策略，避免“一套模板回答所有人”的角色错位。</p>
-          </article>
-          <article class="advantage-card">
-            <h3>RAG 与业务状态深度融合</h3>
-            <p>不是单纯检索再回答，而是把角色、状态、上下文与知识片段一起送入生成链路，使回答更贴近教育心理场景。</p>
-          </article>
-          <article class="advantage-card">
-            <h3>统一后台可演示、可运营、可验证</h3>
-            <p>后台不仅是附属页面，而是系统的重要组成部分，可以直观看到用户、模型、知识库、活动流与状态总览。</p>
-          </article>
-          <article class="advantage-card">
-            <h3>支持报告闭环与预警闭环</h3>
-            <p>学生完成评测后，系统不仅输出结果，还能生成报告并同步到家长端，形成“学生表达 - 家长理解 - 系统提醒”的连续链路。</p>
-          </article>
-          <article class="advantage-card">
-            <h3>更适合比赛展示与答辩讲解</h3>
-            <p>每一个技术能力都能找到对应的业务价值与页面承接，让“为什么这样做”比“做了什么”更容易说服评委。</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="block" id="flow">
-      <div class="shell">
-        <div class="section-head">
-          <div>
-            <div class="section-note">Key Flows</div>
-            <h2>把技术流程和业务闭环讲清楚，评委才更容易看懂作品价值</h2>
-            <p>我们选取了比赛展示中最关键的几条链路：RAG 准备、RAG 回答、心理报告推送与家长绑定协同，形成从底层能力到场景闭环的完整叙事。</p>
-          </div>
-        </div>
-        <div class="flow-wrap">
-          <article class="flow-card">
-            <img src="{{ url_for('static', filename='website/rag-flow-prepare.jpg') }}" alt="RAG 准备流程">
-            <div class="flow-copy">
-              <div class="tag">RAG · 提问前</div>
-              <h3>知识先被整理，回答才有依据</h3>
-              <p>心理健康研究报告先被切分为可检索片段，再通过 text-embedding-v3 生成向量并写入向量数据库。这一步决定了系统能否把知识真正变成“可用的支持”。</p>
-              <ul>
-                <li>文档切片让知识粒度更适合检索</li>
-                <li>Embedding 把语义映射为可比较的向量</li>
-                <li>向量数据库成为后续问答的知识底座</li>
-              </ul>
-            </div>
-          </article>
-
-          <article class="flow-card">
-            <img src="{{ url_for('static', filename='website/rag-flow-answer.jpg') }}" alt="RAG 回答流程">
-            <div class="flow-copy">
-              <div class="tag">RAG · 提问后</div>
-              <h3>不是直接回答，而是先找证据、再重排、再生成</h3>
-              <p>学生提问后，系统会先做向量化查询，召回多个相关片段，再经由 Cross-Encoder 重排，最后把高相关内容连同问题一起送入大模型生成回答。</p>
-              <ul>
-                <li>召回多个候选片段，避免漏掉关键知识</li>
-                <li>重排阶段提高命中质量与回答精度</li>
-                <li>结合业务上下文，让回答更符合学生当下状态</li>
-              </ul>
-            </div>
-          </article>
-
-          <article class="flow-card">
-            <img src="{{ url_for('static', filename='website/report-flow.jpg') }}" alt="学生心理评测报告推送流程">
-            <div class="flow-copy">
-              <div class="tag">Business Flow</div>
-              <h3>从心理评测到家长理解，形成真正的报告闭环</h3>
-              <p>学生完成评测后，AI 生成专业性心理报告，家长端实时查看并接收建议，帮助家长理解孩子的难处，而不是只得到一个抽象分数。</p>
-              <ul>
-                <li>评测不止于“做完”，而是导向解释与支持</li>
-                <li>家长端获得可以执行的沟通建议</li>
-                <li>形成比赛展示中极具说服力的场景闭环</li>
-              </ul>
-            </div>
-          </article>
-
-          <article class="flow-card">
+          <article class="visual-panel">
             <img src="{{ url_for('static', filename='website/binding-flow.jpg') }}" alt="家长端与学生端绑定设计">
-            <div class="flow-copy">
-              <div class="tag">Collaboration</div>
-              <h3>家长端与学生端通过绑定关系形成协同支持</h3>
-              <p>WarmStudy 的关键不只是学生和家长各有一个 AI，而是两端之间存在真实的关系映射，系统才能把表达、理解、观察与提醒接成一条线。</p>
-              <ul>
-                <li>学生表达情绪与状态</li>
-                <li>家长理解孩子变化并接收建议</li>
-                <li>后台承接长期观察与风险提醒</li>
-              </ul>
+            <div class="copy">
+              <strong>双端协同设计</strong>
+              <span>不是学生和家长各有一个 AI 就结束，而是通过绑定关系把表达、理解、观察和提醒连成真实闭环。</span>
             </div>
           </article>
         </div>
       </div>
     </section>
 
-    <section class="block" id="gallery">
+    <section class="block" id="flows">
       <div class="shell">
         <div class="section-head">
           <div>
-            <div class="section-note">Visual Proof</div>
-            <h2>关键页面与技术图示共同支撑比赛展示效果</h2>
-            <p>官网不仅是说明书，也是一页式答辩辅助材料。评委可以快速看到系统架构、模型链路、情绪分析、报告流程与界面联动的整体面貌。</p>
+            <div class="section-tag">Key Flows</div>
+            <h2>把技术流程和业务流程都讲清楚</h2>
+            <p>这部分不是纯技术说明，而是答辩时最容易帮助评委快速理解“系统为什么成立”的关键证据。</p>
           </div>
         </div>
-        <div class="gallery-grid">
-          <article class="image-card">
-            <img src="{{ url_for('static', filename='website/model-design.jpg') }}" alt="LangChain 与模型设计">
-            <div class="copy">
-              <h3>模型链路设计</h3>
-              <p>通过 LangChain 协调大模型与 Embedding 模型，让自然语言理解与知识表示两条链路都能被清晰说明。</p>
+
+        <div class="grid-2">
+          <article class="story-panel">
+            <img src="{{ url_for('static', filename='website/rag-flow-prepare.jpg') }}" alt="RAG 准备流程">
+            <div class="story-copy">
+              <div class="story-chip">RAG · 提问前</div>
+              <h3>先把知识整理好，回答才有依据</h3>
+              <p>心理研究报告被切分成片段，再经由 text-embedding-v3 转成向量写入数据库，这一步决定了系统是否真正拥有可检索、可调用的知识底座。</p>
             </div>
           </article>
-          <article class="image-card">
+
+          <article class="story-panel">
+            <img src="{{ url_for('static', filename='website/rag-flow-answer.jpg') }}" alt="RAG 回答流程">
+            <div class="story-copy">
+              <div class="story-chip">RAG · 提问后</div>
+              <h3>不是直接生成，而是先召回、再重排、再回答</h3>
+              <p>学生问题先向量化，系统召回多个相关片段，经由 Cross-Encoder 重排，再把最相关内容送给大模型，提升回答可靠性与贴合度。</p>
+            </div>
+          </article>
+
+          <article class="story-panel">
+            <img src="{{ url_for('static', filename='website/report-flow.jpg') }}" alt="报告推送流程">
+            <div class="story-copy">
+              <div class="story-chip">Business Flow</div>
+              <h3>评测不是结束，而是支持链路的开始</h3>
+              <p>学生完成评测后，系统生成专业性心理报告，并同步给家长端查看与接收建议，把“测试结果”变成“可以被理解和行动的支持”。</p>
+            </div>
+          </article>
+
+          <article class="story-panel">
             <img src="{{ url_for('static', filename='website/emotion-analysis.jpg') }}" alt="情绪分析图">
-            <div class="copy">
-              <h3>情绪分析可视化</h3>
-              <p>通过情绪词汇识别与状态感知，为后续策略调节提供依据，让智能体真正理解“此刻的学生”而不是只理解“这句话”。</p>
-            </div>
-          </article>
-          <article class="image-card">
-            <img src="{{ url_for('static', filename='website/core-architecture.jpg') }}" alt="整体架构卡片">
-            <div class="copy">
-              <h3>智能体能力组合</h3>
-              <p>多级意图路由、状态驱动策略、混合搜索、线程安全记忆与工作流引擎，共同组成 WarmStudy 的核心技术底座。</p>
-            </div>
-          </article>
-          <article class="image-card">
-            <img src="{{ url_for('static', filename='website/report-flow.jpg') }}" alt="报告流程卡片">
-            <div class="copy">
-              <h3>支持链路比问答更重要</h3>
-              <p>从学生完成评测，到 AI 生成报告，再到家长接收建议，WarmStudy 展示的是“支持系统”，而不是单个对话框。</p>
+            <div class="story-copy">
+              <div class="story-chip">State Awareness</div>
+              <h3>理解状态，而不只是理解句子</h3>
+              <p>通过情绪识别、打卡结果和历史上下文，WarmStudy 让智能体回答更贴近学生此刻的心理状态，而不是输出一套固定模板。</p>
             </div>
           </article>
         </div>
@@ -1017,16 +874,17 @@
       <div class="shell">
         <div class="section-head">
           <div>
-            <div class="section-note">Docs & Repo</div>
-            <h2>GitHub 仓库与文档入口单独展示，方便评委快速查阅</h2>
-            <p>官网保留为比赛展示页，不承担后台实时看板职责。为了帮助评委继续深入了解方案，我们把 GitHub 仓库和 `docs` 中的关键说明文档单独列出，便于查看系统说明、部署方式、模型选择与比赛材料。</p>
+            <div class="section-tag">Docs & Repo</div>
+            <h2>把 GitHub 与项目文档单独展示，方便继续深入查看</h2>
+            <p>官网保持为比赛展示页，不承担实时后台职责。评委如果想继续追踪系统说明、部署方式、模型选择和比赛材料，可以直接从这里进入对应文档。</p>
           </div>
         </div>
+
         <div class="docs-grid">
           <article class="doc-card">
             <span class="doc-tag">GitHub</span>
-            <h3>开源仓库主页</h3>
-            <p>查看完整源代码、APK Release、项目迭代记录，以及前端 App、网关、RAG 服务与后台控制台的整体工程结构。</p>
+            <h3>源代码与 Release</h3>
+            <p>查看完整工程、APK 发布记录、前端 App、统一网关、RAG 服务与后台控制台的整体结构。</p>
             <div class="doc-actions">
               <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy" target="_blank" rel="noreferrer">访问 GitHub 仓库</a>
               <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/releases" target="_blank" rel="noreferrer">查看 Release</a>
@@ -1036,7 +894,7 @@
           <article class="doc-card">
             <span class="doc-tag">Docs</span>
             <h3>文档总索引</h3>
-            <p>如果希望按目录查看完整文档结构，可以从 `docs/README.md` 进入，快速浏览比赛材料、部署文档、模型说明与产品优势介绍。</p>
+            <p>从文档总入口继续查看比赛材料、部署方式、模型说明、系统设计和产品优势，适合答辩后追问场景使用。</p>
             <div class="doc-actions">
               <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/blob/main/docs/README.md" target="_blank" rel="noreferrer">打开 docs/README.md</a>
             </div>
@@ -1045,17 +903,16 @@
           <article class="doc-card">
             <span class="doc-tag">Project</span>
             <h3>项目总体说明</h3>
-            <p>适合第一次了解 WarmStudy 的评委，重点说明场景背景、系统边界、核心能力与比赛映射关系。</p>
+            <p>适合第一次了解 WarmStudy 的阅读路径，重点解释场景背景、作品定位、系统边界与比赛映射关系。</p>
             <div class="doc-actions">
               <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/blob/main/docs/COMPETITION_PROJECT_DESCRIPTION.md" target="_blank" rel="noreferrer">查看项目总说明</a>
-              <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/blob/main/README.md" target="_blank" rel="noreferrer">查看仓库 README</a>
             </div>
           </article>
 
           <article class="doc-card">
             <span class="doc-tag">Advantage</span>
             <h3>产品优势与智能体亮点</h3>
-            <p>集中展示双端角色差异、状态驱动策略、RAG 融合方式与为什么它更适合教育心理支持场景。</p>
+            <p>集中展示角色差异、状态驱动策略、RAG 融合方式以及为什么它更适合教育心理支持场景。</p>
             <div class="doc-actions">
               <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/blob/main/docs/AGENT_AND_PRODUCT_ADVANTAGES.md" target="_blank" rel="noreferrer">查看优势文档</a>
             </div>
@@ -1064,17 +921,17 @@
           <article class="doc-card">
             <span class="doc-tag">Deploy</span>
             <h3>部署与运行手册</h3>
-            <p>用于说明服务器部署、服务更新、系统运行入口与运维注意事项，适合答辩时说明作品可落地性。</p>
+            <p>用于说明服务器部署、服务更新、运行入口与运维要点，方便解释系统不仅能展示，也能落地运行。</p>
             <div class="doc-actions">
               <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/blob/main/docs/DEPLOYMENT_RUNBOOK.md" target="_blank" rel="noreferrer">查看部署手册</a>
-              <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/blob/main/docs/SERVER_UPDATE_DEPLOYMENT.md" target="_blank" rel="noreferrer">查看服务器更新说明</a>
+              <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/blob/main/docs/SERVER_UPDATE_DEPLOYMENT.md" target="_blank" rel="noreferrer">查看更新说明</a>
             </div>
           </article>
 
           <article class="doc-card">
             <span class="doc-tag">Model</span>
             <h3>模型来源与选择说明</h3>
-            <p>说明当前使用的 Qwen / DashScope 路线、Embedding 选择依据，以及模型部署策略，方便解释技术路线的合理性。</p>
+            <p>说明当前模型与 Embedding 路线、技术选择依据与部署策略，方便把“为什么这样选”讲清楚。</p>
             <div class="doc-actions">
               <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/blob/main/docs/MODEL_SELECTION.md" target="_blank" rel="noreferrer">查看模型选择说明</a>
               <a class="doc-link" href="https://github.com/LUTAO581314/WarmStudy/blob/main/docs/MODEL_SOURCE_AND_DEPLOYMENT_NOTE.md" target="_blank" rel="noreferrer">查看模型来源说明</a>
@@ -1086,27 +943,26 @@
 
     <section class="block">
       <div class="shell">
-        <div class="final-panel">
-          <div class="section-note" style="color:#8be9ff;">Final Pitch</div>
-          <h2>WarmStudy 的竞争力，在于它把“教育场景真实性、完整系统原型、Agent + RAG 技术解释性”三者真正合到了一起。</h2>
-          <p>对于比赛展示，这意味着我们不需要只靠一句“我们用了大模型”来争取注意力，而是可以用一套完整的页面、流程和后台，清楚回答评委最关心的三个问题：</p>
+        <div class="closing">
+          <div class="section-tag" style="color:#9fe8ff;">Final Pitch</div>
+          <h2>WarmStudy 的竞争力，不是“也用了大模型”，而是把场景真实性、系统完整性和技术解释性真正合到了一起。</h2>
+          <p>对于比赛展示，这意味着我们不仅能展示页面，还能解释为什么这个作品值得做、为什么系统是完整的、为什么技术路线合理，而且这些问题都能在页面、流程图、后台和文档中找到对应证据。</p>
           <ul>
-            <li>为什么这个问题值得做：因为它来自真实的学生心理支持与家校沟通痛点。</li>
-            <li>为什么这个系统是完整的：因为它同时覆盖学生端、家长端、后台和知识增强链路。</li>
-            <li>为什么这个技术方案是合理的：因为每一层技术都能指向一个明确的业务价值。</li>
+            <li>问题真实：来自青少年心理支持与家校沟通的真实痛点。</li>
+            <li>系统完整：覆盖学生端、家长端、后台与知识增强链路。</li>
+            <li>技术合理：每一层设计都能回到清晰的业务价值。</li>
           </ul>
-          <div class="final-actions">
-            <a class="cta primary" href="/console">进入后台控制台</a>
-            <a class="cta secondary" href="/api/gateway/status">查看网关状态</a>
-            <a class="cta secondary" href="https://github.com/LUTAO581314/WarmStudy" target="_blank" rel="noreferrer">查看 GitHub 仓库</a>
-            <a class="cta secondary" href="#docs">查看项目文档</a>
+          <div class="closing-actions">
+            <a class="btn primary" href="/console">进入后台控制台</a>
+            <a class="btn dark" href="/api/gateway/status">查看网关状态</a>
+            <a class="btn dark" href="https://github.com/LUTAO581314/WarmStudy" target="_blank" rel="noreferrer">查看 GitHub 仓库</a>
           </div>
         </div>
       </div>
     </section>
   </main>
 
-  <footer class="foot">
+  <footer>
     WarmStudy · 面向青少年心理关怀与家校协同支持场景的教育智能体原型系统
   </footer>
 </body>
