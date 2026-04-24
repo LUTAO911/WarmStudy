@@ -137,8 +137,8 @@ export function studentChat(
   }>("/api/student/chat", {
     user_id: userId,
     message,
-    session_id: options?.sessionId,
-    profile: options?.profile,
+    session_id: options && options.sessionId ? options.sessionId : undefined,
+    profile: options && options.profile ? options.profile : undefined,
   });
 }
 
@@ -308,8 +308,8 @@ export function parentChat(
   return request<{ success: boolean; response: string }>("/api/parent/chat", {
     user_id: userId,
     message,
-    session_id: options?.sessionId,
-    child_id: options?.childId,
+    session_id: options && options.sessionId ? options.sessionId : undefined,
+    child_id: options && options.childId ? options.childId : undefined,
   });
 }
 

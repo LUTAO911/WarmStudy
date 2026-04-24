@@ -2,7 +2,10 @@ export {};
 
 const getApiBase = (): string => {
   const app = getApp<IAppOption>();
-  return app?.globalData?.apiBase || "https://wsapi.supermoxi.top";
+  if (app && app.globalData && app.globalData.apiBase) {
+    return app.globalData.apiBase;
+  }
+  return "https://wsapi.supermoxi.top";
 };
 
 function request(

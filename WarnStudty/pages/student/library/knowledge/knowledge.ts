@@ -11,7 +11,10 @@ interface KnowledgeItem {
 
 const getApiBase = (): string => {
   const app = getApp<IAppOption>();
-  return app?.globalData?.apiBase || "https://wsapi.supermoxi.top";
+  if (app && app.globalData && app.globalData.apiBase) {
+    return app.globalData.apiBase;
+  }
+  return "https://wsapi.supermoxi.top";
 };
 
 Page({
@@ -27,7 +30,7 @@ Page({
 
   onLoad(options?: { id?: string }) {
     this.loadCategories();
-    this.loadKnowledge(options?.id);
+    this.loadKnowledge(options && options.id ? options.id : undefined);
   },
 
   loadCategories() {
