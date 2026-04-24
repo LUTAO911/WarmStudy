@@ -23,8 +23,9 @@ on:
 
 jobs:
   lint:
-    name: Lint & Type Check
+    name: Lint & Type Check (Advisory)
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
       - name: Checkout code
@@ -46,23 +47,27 @@ jobs:
       - name: Install linting tools
         run: |
           python -m pip install --upgrade pip
-          pip install black flake8 mypy pylint isort
+          pip install black flake8 mypy isort
 
       - name: Run Black
+        working-directory: agent
         run: |
-          black --check --diff agent/ tests/ || true
+          git ls-files '*.py' | xargs black --check --diff
 
       - name: Run isort
+        working-directory: agent
         run: |
-          isort --check-only --diff agent/ tests/ || true
+          git ls-files '*.py' | xargs isort --check-only --diff
 
       - name: Run flake8
+        working-directory: agent
         run: |
-          flake8 agent/ tests/ --max-line-length=100 --extend-ignore=E203,W503 || true
+          git ls-files '*.py' | xargs flake8
 
       - name: Run mypy
+        working-directory: agent
         run: |
-          mypy agent/ --ignore-missing-imports || true
+          mypy agent --ignore-missing-imports
 
   test:
     name: Unit Tests
@@ -88,16 +93,23 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install -r agent/requirements.txt
           pip install pytest pytest-cov pytest-asyncio
           pip install -e ./agent
+
+      - name: Compile Python modules
+        working-directory: agent
+        run: |
+          python -m compileall -q app.py api_gateway.py embeddings.py loader.py ocr.py redis_client.py vectorstore.py agent
 
       - name: Run tests with coverage
         run: |
           pytest agent/tests/ -v --cov=agent --cov-report=xml --cov-report=html --cov-report=term
 
   security:
-    name: Security Scan
+    name: Security Scan (Advisory)
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
       - name: Checkout code
@@ -115,16 +127,16 @@ jobs:
 
       - name: Run Bandit
         run: |
-          bandit -r agent/ -f json -o bandit_report.json || true
+          bandit -r agent/ -f json -o bandit_report.json
 
       - name: Run Safety Check
         run: |
-          safety check || true
+          safety check -r agent/requirements.txt
 
   build:
     name: Build Check
     runs-on: ubuntu-latest
-    needs: [lint, test, security]
+    needs: [test]
 
     steps:
       - name: Checkout code
@@ -150,15 +162,15 @@ jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [lint, test, security]
+    needs: [test, build]
 
     steps:
       - name: Check quality gate
         run: |
-          echo "All quality checks passed!"
-          echo "Lint: Passed"
+          echo "Required checks passed!"
           echo "Tests: Passed"
-          echo "Security: Passed"
+          echo "Build: Passed"
+          echo "Lint and security scans run as advisory jobs."
           echo "Ready for deployment!"
 
   merge-check:
