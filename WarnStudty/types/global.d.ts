@@ -28,10 +28,35 @@ interface IPageConfig {
   [key: string]: any;
 }
 
+declare namespace wx {
+  interface RequestResponse {
+    statusCode: number;
+    data: any;
+    header?: Record<string, string>;
+  }
+
+  interface RequestOption {
+    url: string;
+    data?: any;
+    method?: string;
+    header?: Record<string, string>;
+    success?: (res: RequestResponse) => void;
+    fail?: (err: any) => void;
+  }
+
+  interface NavigateOption {
+    url: string;
+    success?: () => void;
+    fail?: (err: any) => void;
+    complete?: () => void;
+  }
+}
+
 declare const wx: {
   request(options: wx.RequestOption): void;
   getStorageSync(key: string): any;
   setStorageSync(key: string, value: any): void;
+  removeStorageSync(key: string): void;
   showToast(options: { title: string; icon?: string; duration?: number }): void;
   showLoading(options: { title: string }): void;
   hideLoading(): void;
@@ -51,10 +76,10 @@ declare const wx: {
     onlyFromCamera?: boolean;
     success?: (res: { result: string }) => void;
   }): void;
-  navigateTo(options: { url: string }): void;
-  redirectTo(options: { url: string }): void;
-  switchTab(options: { url: string }): void;
-  reLaunch(options: { url: string }): void;
+  navigateTo(options: wx.NavigateOption): void;
+  redirectTo(options: wx.NavigateOption): void;
+  switchTab(options: wx.NavigateOption): void;
+  reLaunch(options: wx.NavigateOption): void;
   navigateBack(options?: { delta?: number }): void;
   makePhoneCall(options: { phoneNumber: string }): void;
   getLocation(options: {

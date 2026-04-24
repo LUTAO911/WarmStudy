@@ -13,6 +13,19 @@ Write-Host ""
 
 # Check venv
 Write-Host "[1/4] Checking venv..."
+$RecreateVenv = $false
+if (Test-Path $VenvPython) {
+    & $VenvPython -c "import sys" *> $null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "   Existing venv is invalid, recreating..."
+        $RecreateVenv = $true
+    }
+}
+
+if ($RecreateVenv) {
+    Remove-Item -Recurse -Force (Join-Path $AgentDir ".venv")
+}
+
 if (-not (Test-Path $VenvPython)) {
     Write-Host "   Creating venv..."
     & python -m venv .venv

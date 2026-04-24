@@ -17,12 +17,18 @@ function request<T = any>(
   data?: any,
   method: string = "POST",
 ): Promise<T> {
+  const token = wx.getStorageSync("auth_token");
+  const header: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    header.Authorization = `Bearer ${token}`;
+  }
+
   return new Promise((resolve, reject) => {
     wx.request({
       url: `${getApiBase()}${url}`,
       data,
       method,
-      header: { "Content-Type": "application/json" },
+      header,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data as T);
@@ -483,12 +489,16 @@ export function getChildPsychReports(
     date: string;
   }[];
 }> {
-  return request(`/api/parent/child/${childId}/psych_reports?limit=${limit}`);
+  return request(
+    `/api/parent/child/${childId}/psych_reports?limit=${limit}`,
+    undefined,
+    "GET",
+  );
 }
 
 /** 获取孩子最新心理状态 */
 export function getChildPsychStatus(childId: string): Promise<any> {
-  return request(`/api/parent/child/${childId}/psych/latest`);
+  return request(`/api/parent/child/${childId}/psych/latest`, undefined, "GET");
 }
 
 // ===== 家长预警 =====
@@ -567,5 +577,5 @@ export function getChildPsychReportDetail(reportId: string): Promise<{
     child_grade: string;
   };
 }> {
-  return request(`/api/parent/report/${reportId}`);
+  return request(`/api/parent/report/${reportId}`, undefined, "GET");
 }

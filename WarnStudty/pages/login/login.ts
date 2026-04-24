@@ -114,8 +114,6 @@ Page({
   onPhoneLogin() {
     const { phone, code, selectedRole, agreed, redirecting } = this.data;
 
-    console.log("onPhoneLogin called", { phone, code, selectedRole, agreed, redirecting });
-
     if (redirecting) {
       return;
     }
@@ -161,6 +159,9 @@ Page({
     wx.setStorageSync("user_role", role);
     wx.setStorageSync("user_name", result.data.name);
     wx.setStorageSync("user_phone", result.data.phone);
+    if (result.data.token) {
+      wx.setStorageSync("auth_token", result.data.token);
+    }
 
     wx.showToast({ title: "登录成功", icon: "success" });
     this.navigateToHome(role);
@@ -168,7 +169,6 @@ Page({
 
   // 模拟登录（开发阶段使用）
   mockLogin(role: string) {
-    console.log("mockLogin called", role);
     const mockUserId = role === "student" ? "student_001" : "parent_001";
     const mockName = role === "student" ? "学生用户" : "家长用户";
 
@@ -176,8 +176,6 @@ Page({
     wx.setStorageSync("user_role", role);
     wx.setStorageSync("user_name", mockName);
     wx.setStorageSync("user_phone", this.data.phone || "13800138000");
-
-    console.log("登录信息已保存", { mockUserId, role, mockName });
 
     wx.showToast({
       title: "登录成功",
@@ -188,10 +186,7 @@ Page({
 
   // 跳转到首页
   navigateToHome(role: string) {
-    console.log("navigateToHome called", role);
-
     if (this.data.redirecting) {
-      console.log("已有跳转进行中，忽略重复跳转", role);
       return;
     }
 
@@ -205,9 +200,6 @@ Page({
     if (role === "student") {
       wx.switchTab({
         url: "/pages/student/chat/chat",
-        success: () => {
-          console.log("学生端跳转成功");
-        },
         fail: (err) => {
           console.error("学生端跳转失败", err);
           wx.showToast({ title: "跳转失败", icon: "none" });
@@ -218,9 +210,6 @@ Page({
       // 家长端使用 navigateTo
       wx.navigateTo({
         url: "/pages/parent/home/home",
-        success: () => {
-          console.log("家长端跳转成功");
-        },
         fail: (err) => {
           console.error("家长端跳转失败", err);
           wx.showToast({ title: "跳转失败", icon: "none" });
