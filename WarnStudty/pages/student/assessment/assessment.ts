@@ -56,8 +56,27 @@ function getCurrentDate() {
   return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}-${now.getDate().toString().padStart(2, "0")}`;
 }
 
+function isValidStudentId(value: any): boolean {
+  return /^\d{9}$/.test(String(value || "").trim());
+}
+
 function getUserId(role = "student") {
-  return wx.getStorageSync("user_id") || "student_001";
+  const existing =
+    wx.getStorageSync("student_user_id") ||
+    (wx.getStorageSync("user_role") === "student" ? wx.getStorageSync("user_id") : "");
+  if (isValidStudentId(existing)) {
+    wx.setStorageSync("student_user_id", existing);
+    wx.setStorageSync("student_id", existing);
+    return existing;
+  }
+  const generated = String(Math.floor(100000000 + Math.random() * 900000000));
+  wx.setStorageSync("student_user_id", generated);
+  wx.setStorageSync("student_id", generated);
+  if (!wx.getStorageSync("user_id")) {
+    wx.setStorageSync("user_id", generated);
+    wx.setStorageSync("user_role", role);
+  }
+  return generated;
 }
 
 const DIMENSIONS = ["emotion", "sleep", "study", "social"] as const;

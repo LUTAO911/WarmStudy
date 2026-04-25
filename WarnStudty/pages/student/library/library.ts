@@ -1,3 +1,5 @@
+export {};
+
 /* library.ts - 心理成长中心 */
 
 const getApiBase = (): string => {
@@ -29,6 +31,29 @@ function request(
       fail: (err) => reject(err),
     });
   });
+}
+
+function isValidStudentId(value: any): boolean {
+  return /^\d{9}$/.test(String(value || "").trim());
+}
+
+function ensureStudentId(): string {
+  const existing =
+    wx.getStorageSync("student_user_id") ||
+    (wx.getStorageSync("user_role") === "student" ? wx.getStorageSync("user_id") : "");
+  if (isValidStudentId(existing)) {
+    wx.setStorageSync("student_user_id", existing);
+    wx.setStorageSync("student_id", existing);
+    return existing;
+  }
+  const generated = String(Math.floor(100000000 + Math.random() * 900000000));
+  wx.setStorageSync("student_user_id", generated);
+  wx.setStorageSync("student_id", generated);
+  if (!wx.getStorageSync("user_id")) {
+    wx.setStorageSync("user_id", generated);
+    wx.setStorageSync("user_role", "student");
+  }
+  return generated;
 }
 
 interface PsychCard {
@@ -156,6 +181,7 @@ Page({
       name: "李明",
       grade: "七年级",
       class: "",
+      studentId: "",
       todayMood: 0.8,
       moodLabel: "心情不错",
       moodIcon: "😊",
@@ -163,6 +189,7 @@ Page({
       name: string;
       grade: string;
       class: string;
+      studentId: string;
       todayMood: number;
       moodLabel: string;
       moodIcon: string;
@@ -223,10 +250,12 @@ Page({
   loadUserInfo() {
     const info = wx.getStorageSync("user_info") || {};
     const childInfo = wx.getStorageSync("child_info") || {};
+    const studentId = ensureStudentId();
     const merged = {
       ...info,
       name: childInfo.name || info.name || this.data.userInfo.name,
       grade: childInfo.grade || info.grade || this.data.userInfo.grade,
+      studentId,
       class:
         info.class !== undefined && info.class !== null
           ? info.class
@@ -250,9 +279,18 @@ Page({
           todayMood: merged.todayMood || 0.8,
           moodLabel: moodLabels[moodIndex],
           moodIcon: moodIcons[moodIndex],
+          studentId,
         },
       });
     }
+  },
+
+  onCopyStudentId() {
+    const studentId = ensureStudentId();
+    wx.setClipboardData({
+      data: studentId,
+      success: () => wx.showToast({ title: "孩子ID已复制", icon: "success" }),
+    });
   },
 
   checkTodayStatus() {
@@ -315,7 +353,11 @@ Page({
 
     // 调用后端API记录
     request("/api/student/checkin", {
-      mood: moodValue,
+      user_id: ensureStudentId(),
+      emotion: moodValue,
+      sleep: 3,
+      study: 3,
+      social: 3,
       timestamp: Date.now(),
     }).catch(() => {});
   },
@@ -365,7 +407,7 @@ Page({
   },
 
   syncTrendWithAssessment() {
-    const userId = wx.getStorageSync("user_id") || "student_001";
+    const userId = ensureStudentId();
     const psychStatus = wx.getStorageSync(`psych_status_${userId}`) || {};
     const rawScores = Array.isArray(psychStatus.radarScores)
       ? psychStatus.radarScores

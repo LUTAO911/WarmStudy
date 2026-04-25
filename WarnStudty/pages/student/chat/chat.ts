@@ -355,6 +355,7 @@ Page({
       name: childInfo.name,
       grade: childInfo.grade,
       class: "",
+      studentId: getUserId(),
       todayMood: 0.8,
       moodLabel: "心情不错",
       moodIcon: "😊",

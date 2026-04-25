@@ -26,8 +26,31 @@ function bindParentByToken(token, childId) {
   return request('/api/child/bind', { token: token, child_id: childId });
 }
 
+function isValidStudentId(value) {
+  return /^\d{9}$/.test(String(value || '').trim());
+}
+
+function ensureStudentId() {
+  var existing =
+    wx.getStorageSync('student_user_id') ||
+    (wx.getStorageSync('user_role') === 'student' ? wx.getStorageSync('user_id') : '');
+  if (isValidStudentId(existing)) {
+    wx.setStorageSync('student_user_id', existing);
+    wx.setStorageSync('student_id', existing);
+    return existing;
+  }
+  var generated = String(Math.floor(100000000 + Math.random() * 900000000));
+  wx.setStorageSync('student_user_id', generated);
+  wx.setStorageSync('student_id', generated);
+  if (!wx.getStorageSync('user_id')) {
+    wx.setStorageSync('user_id', generated);
+    wx.setStorageSync('user_role', 'student');
+  }
+  return generated;
+}
+
 function getUserId(role) {
-  return wx.getStorageSync('user_id') || 'student_001';
+  return ensureStudentId();
 }
 
 var ALL_BOOKS = [
@@ -72,7 +95,7 @@ Page({
       name: "李明",
       grade: "七年级",
       class: "（3）班",
-      studentId: "学号 2024001",
+      studentId: "",
       parentBound: false,
       todayMood: 0.8,
     },
@@ -99,9 +122,22 @@ Page({
 
   loadUserInfo: function() {
     var info = wx.getStorageSync("user_info");
+    var studentId = ensureStudentId();
     if (info) {
-      this.setData({ userInfo: info });
+      this.setData({ userInfo: Object.assign({}, info, { studentId: studentId }) });
+    } else {
+      this.setData({ userInfo: Object.assign({}, this.data.userInfo, { studentId: studentId }) });
     }
+  },
+
+  onCopyStudentId: function() {
+    var studentId = ensureStudentId();
+    wx.setClipboardData({
+      data: studentId,
+      success: function() {
+        wx.showToast({ title: "孩子ID已复制", icon: "success" });
+      },
+    });
   },
 
   onBindParent: function() {

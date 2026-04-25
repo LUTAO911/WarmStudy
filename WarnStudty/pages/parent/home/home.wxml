@@ -9,33 +9,41 @@
         </view>
         <view class="child-detail">
           <text class="child-name">{{childInfo.name}} · {{childInfo.grade}}{{childInfo.class}}</text>
-          <text class="child-meta">学号：{{childInfo.studentId}}</text>
+          <text class="child-meta">孩子ID：{{childInfo.studentId}}</text>
         </view>
       </view>
       <view class="header-right">
         <view class="header-date">{{today}}</view>
         <!-- 绑定设置按钮 -->
         <view class="bind-btn" bindtap="onShowBindQR">
-          <text>📱 绑定设置</text>
+          <text>绑定设置</text>
         </view>
       </view>
     </view>
     <!-- 打卡汇总 -->
-    <view class="checkin-summary">
+    <view class="checkin-summary" wx:if="{{hasBoundChild}}">
       <view class="checkin-item {{checkin.emotion >= 3 ? 'good' : 'warn'}}">
-        <text class="ci-icon">😊</text><text class="ci-label">情绪</text><text class="ci-val">{{checkin.emotion}}/5</text>
+        <text class="ci-icon">情</text><text class="ci-label">情绪</text><text class="ci-val">{{checkin.emotion}}/5</text>
       </view>
       <view class="checkin-item {{checkin.study >= 3 ? 'good' : 'warn'}}">
-        <text class="ci-icon">📚</text><text class="ci-label">学习</text><text class="ci-val">{{checkin.study}}/5</text>
+        <text class="ci-icon">学</text><text class="ci-label">学习</text><text class="ci-val">{{checkin.study}}/5</text>
       </view>
       <view class="checkin-item {{checkin.sleep >= 3 ? 'good' : 'warn'}}">
-        <text class="ci-icon">😴</text><text class="ci-label">睡眠</text><text class="ci-val">{{checkin.sleep}}/5</text>
+        <text class="ci-icon">眠</text><text class="ci-label">睡眠</text><text class="ci-val">{{checkin.sleep}}/5</text>
       </view>
       <view class="checkin-item {{checkin.social >= 3 ? 'good' : 'warn'}}">
-        <text class="ci-icon">👫</text><text class="ci-label">社交</text><text class="ci-val">{{checkin.social}}/5</text>
+        <text class="ci-icon">社</text><text class="ci-label">社交</text><text class="ci-val">{{checkin.social}}/5</text>
       </view>
     </view>
   </view>
+
+  <view wx:if="{{!hasBoundChild}}" class="empty-bind-card">
+    <text class="empty-bind-title">请先绑定孩子</text>
+    <text class="empty-bind-desc">让孩子在学生端“成长中心”复制9位孩子ID，家长输入后即可同步查看测评、打卡、预警和综合报告。</text>
+    <view class="empty-bind-action" bindtap="onShowBindQR">绑定孩子ID</view>
+  </view>
+
+  <block wx:if="{{hasBoundChild}}">
 
   <!-- 预警通知卡片 -->
   <view class="alert-banner {{latestUnreadAlert ? 'has-alert' : ''}}" bindtap="goToAlerts" wx:if="{{latestUnreadAlert}}">
@@ -51,6 +59,34 @@
       <text class="alert-banner-time">{{latestUnreadAlert.created_at}}</text>
     </view>
     <text class="alert-banner-arrow">›</text>
+  </view>
+
+  <!-- 综合报告 -->
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">综合报告</text>
+      <text class="section-more" wx:if="{{comprehensiveReport.latest_report_id}}" bindtap="onViewReportDetail" data-id="{{comprehensiveReport.latest_report_id}}">查看详情 ›</text>
+    </view>
+    <view wx:if="{{comprehensiveReport}}" class="summary-report">
+      <view class="summary-report-head">
+        <view class="summary-risk {{comprehensiveReport.risk_level >= 3 ? 'red' : comprehensiveReport.risk_level >= 1 ? 'orange' : 'green'}}">
+          {{comprehensiveReport.risk_label}}
+        </view>
+        <text class="summary-date">{{comprehensiveReport.latest_report_date || comprehensiveReport.updated_at}}</text>
+      </view>
+      <text class="summary-text">{{comprehensiveReport.summary}}</text>
+      <view class="summary-metrics">
+        <view class="summary-metric">
+          <text class="summary-metric-num">{{comprehensiveReport.checkin_count}}</text>
+          <text class="summary-metric-label">近7天打卡</text>
+        </view>
+        <view class="summary-metric">
+          <text class="summary-metric-num">{{comprehensiveReport.avg_emotion || '-'}}</text>
+          <text class="summary-metric-label">平均情绪</text>
+        </view>
+      </view>
+      <text class="summary-advice">{{comprehensiveReport.advice}}</text>
+    </view>
   </view>
 
   <!-- 心理画像 -->
@@ -132,7 +168,7 @@
       </view>
     </view>
     <view class="risk-alert {{riskLevel >= 3 ? 'show' : ''}}">
-      <text class="risk-icon">⚠️</text>
+      <text class="risk-icon">!</text>
       <text class="risk-text">检测到 {{riskLevel}} 项指标偏高，建议与孩子多沟通</text>
     </view>
   </view>
@@ -148,7 +184,7 @@
       <view class="week-label">四</view><view class="week-label">五</view><view class="week-label">六</view><view class="week-label">日</view>
       <view class="week-dot-item {{item.emotion >= 3 ? 'good' : 'warn'}}" wx:for="{{weekCheckins}}" wx:key="day">
         <view class="week-dot {{item.done ? 'done' : ''}} {{item.emotion >= 3 ? 'good' : 'warn'}}"></view>
-        <text class="week-emoji">{{item.done ? (item.emotion >= 3 ? '😊' : '😔') : '·'}}</text>
+        <text class="week-emoji">{{item.done ? (item.emotion >= 3 ? '稳' : '低') : '·'}}</text>
       </view>
     </view>
     <view class="legend-row">
@@ -162,7 +198,7 @@
   <view class="section ai-advice-section" bindtap="goToAI">
     <view class="ai-advice-header">
       <view class="ai-advice-title-row">
-        <text class="ai-advice-icon">💡</text>
+        <text class="ai-advice-icon">AI</text>
         <text class="ai-advice-title">AI今日建议</text>
       </view>
       <text class="ai-advice-arrow">›</text>
@@ -184,7 +220,7 @@
   <!-- 测评报告 -->
   <view class="section">
     <view class="section-header">
-      <text class="section-title">📋 测评报告</text>
+      <text class="section-title">测评报告</text>
       <text class="section-more" bindtap="onViewAllReports">全部报告 ›</text>
     </view>
     <view wx:if="{{psychReports.length > 0}}">
@@ -229,12 +265,14 @@
 
   <view style="height:40rpx"></view>
 
+  </block>
+
   <!-- 绑定设置弹窗 -->
   <view class="qr-modal {{showQR ? 'show' : ''}}" wx:if="{{showQR}}">
     <view class="qr-mask" bindtap="onCloseQR"></view>
     <view class="qr-sheet">
       <view class="qr-header">
-        <text class="qr-title">📱 绑定设置</text>
+        <text class="qr-title">绑定孩子</text>
         <text class="qr-close" bindtap="onCloseQR">×</text>
       </view>
 
@@ -245,13 +283,23 @@
         <view class="qr-login-btn" bindtap="onLogin">登录 / 注册</view>
       </view>
 
+      <!-- 已登录：手动输入孩子ID -->
+      <view wx:if="{{isLoggedIn}}" class="bind-id-panel">
+        <text class="bind-id-title">输入孩子ID绑定</text>
+        <text class="bind-id-desc">孩子ID为学生端自动生成的9位数字。</text>
+        <view class="bind-id-row">
+          <input class="bind-id-input" type="number" maxlength="9" placeholder="请输入9位孩子ID" value="{{bindChildId}}" bindinput="onBindChildIdInput"/>
+          <view class="bind-id-btn {{bindingChild ? 'disabled' : ''}}" bindtap="onBindChildById">{{bindingChild ? '绑定中' : '绑定'}}</view>
+        </view>
+      </view>
+
       <!-- 已登录：显示二维码 -->
       <view wx:if="{{isLoggedIn && !qrData}}" class="qr-loading">
         <text class="qr-loading-text">正在生成二维码...</text>
       </view>
 
       <view wx:if="{{isLoggedIn && qrData}}" class="qr-content">
-        <text class="qr-desc">让孩子扫下方二维码绑定</text>
+        <text class="qr-desc">也可以让孩子扫码绑定</text>
         <image class="qr-image" src="{{qrData.qrImageUrl}}" mode="aspectFit" show-menu-by-longpress/>
         <view class="qr-info">
           <text class="qr-info-text">或告诉孩子您的手机号</text>
@@ -263,7 +311,7 @@
             <text class="qr-children-title">已绑定的孩子</text>
             <view class="refresh-btn" bindtap="onRefreshChildren">↻ 刷新</view>
           </view>
-          <view class="child-item" wx:for="{{boundChildren}}" wx:key="id">
+          <view class="child-item {{item.active ? 'active' : ''}}" wx:for="{{boundChildren}}" wx:key="id" bindtap="onSelectChild" data-id="{{item.id}}">
             <view class="child-item-avatar">{{item.name[0]}}</view>
             <view class="child-item-info">
               <text class="child-item-name">{{item.name}}</text>

@@ -19,38 +19,21 @@ function request<T = any>(
   data?: any,
   method: string = "POST",
 ): Promise<T> {
-  const token = wx.getStorageSync("auth_token");
-  const header: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) {
-    header.Authorization = `Bearer ${token}`;
-  }
-
   return new Promise((resolve, reject) => {
     wx.request({
       url: `${getApiBase()}${url}`,
       data,
       method,
-      header,
-      timeout: 15000,
+      header: { "Content-Type": "application/json" },
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data as T);
         } else {
           const body = res.data as { error?: string; message?: string } | undefined;
-          const message =
-            body && (body.error || body.message)
-              ? body.error || body.message
-              : `请求失败: ${res.statusCode}`;
-          reject(new Error(message));
+          reject(new Error(body?.error || body?.message || `请求失败: ${res.statusCode}`));
         }
       },
-      fail: (err) => {
-        const errMsg =
-          err && typeof err.errMsg === "string" && err.errMsg
-            ? err.errMsg
-            : "网络请求失败";
-        reject(new Error(`${method} ${url} -> ${errMsg}`));
-      },
+      fail: (err) => reject(err),
     });
   });
 }
@@ -76,10 +59,12 @@ export function loginByPhone(
   message?: string;
   data?: {
     user_id: string;
+    student_id?: string;
     name: string;
     phone: string;
     role: string;
     token: string;
+    bound_children?: string[];
   };
 }> {
   return request("/api/auth/login/phone", { phone, code, role });
@@ -386,6 +371,27 @@ export function getDailyAdvice(
   return request(`/api/parent/child/${childId}/ai_advice`, undefined, "GET");
 }
 
+export function getChildComprehensiveReport(childId: string): Promise<{
+  success: boolean;
+  report: {
+    child_id: string;
+    child_name: string;
+    grade: string;
+    risk_level: number;
+    risk_label: string;
+    summary: string;
+    advice: string;
+    avg_emotion?: number;
+    checkin_count: number;
+    latest_report_id?: number;
+    latest_report_date?: string;
+    radarScores: number[];
+    updated_at: string;
+  };
+}> {
+  return request(`/api/parent/child/${childId}/summary_report`, undefined, "GET");
+}
+
 /**
  * 录入孩子成绩
  * POST /api/parent/child/grade
@@ -410,7 +416,7 @@ export function submitGrade(
  */
 export function parentLogin(phone: string): Promise<{
   success: boolean;
-  account: { id: number; phone: string; name: string; qr_token: string };
+  account: { id: number | string; parent_id?: string; phone: string; name: string; qr_token: string };
   bound_children: string[];
 }> {
   return request("/api/parent/login", { phone });
@@ -431,7 +437,7 @@ export function getChildrenProfiles(childIds: string[]): Promise<{
 /**
  * 获取家长二维码内容
  */
-export function getParentQRToken(parentId: number): Promise<{
+export function getParentQRToken(parentId: string | number): Promise<{
   success: boolean;
   token: string;
   qr_url: string;
@@ -466,11 +472,10 @@ export function getCurrentDate(): string {
 /** 获取本地存储的 userId */
 export function getUserId(role: "student" | "parent" = "student"): string {
   const key = role === "student" ? "student_user_id" : "parent_user_id";
-  return (
-    wx.getStorageSync(key) ||
-    wx.getStorageSync("user_id") ||
-    (role === "student" ? "student_001" : "parent_001")
-  );
+  if (role === "student") {
+    return ensureStudentId();
+  }
+  return wx.getStorageSync(key) || wx.getStorageSync("user_id") || "";
 }
 
 /** 获取当前登录用户的ID */
@@ -485,12 +490,37 @@ export function getCurrentRole(): "student" | "parent" | "" {
 
 /** 获取本地存储的家长 ID */
 export function getParentId(): string {
-  return wx.getStorageSync("parent_user_id") || "parent_001";
+  const account = wx.getStorageSync("parent_account") || {};
+  return wx.getStorageSync("parent_user_id") || account.parent_id || account.id || wx.getStorageSync("user_id") || "";
 }
 
 /** 获取绑定的孩子 ID */
 export function getChildId(): string {
-  return wx.getStorageSync("bound_child_id") || "student_001";
+  return wx.getStorageSync("bound_child_id") || "";
+}
+
+export function isValidStudentId(childId: string): boolean {
+  return /^\d{9}$/.test(String(childId || "").trim());
+}
+
+export function ensureStudentId(): string {
+  const existing =
+    wx.getStorageSync("student_user_id") ||
+    (wx.getStorageSync("user_role") === "student" ? wx.getStorageSync("user_id") : "");
+  if (isValidStudentId(existing)) {
+    wx.setStorageSync("student_user_id", existing);
+    wx.setStorageSync("student_id", existing);
+    return existing;
+  }
+
+  const generated = String(Math.floor(100000000 + Math.random() * 900000000));
+  wx.setStorageSync("student_user_id", generated);
+  wx.setStorageSync("student_id", generated);
+  if (!wx.getStorageSync("user_id")) {
+    wx.setStorageSync("user_id", generated);
+    wx.setStorageSync("user_role", "student");
+  }
+  return generated;
 }
 
 // ===== 扫码绑定 =====

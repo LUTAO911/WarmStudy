@@ -40,11 +40,7 @@ agent/pytest-cache-files-*/
 agent/tests/.tmp/
 
 *.tgz
-
-# Mobile build artifacts
 *.apk
-*.aab
-*.ipa
 
 # Local runtime data
 data/

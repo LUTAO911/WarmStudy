@@ -75,7 +75,10 @@ App<IAppOption>({
     wx.removeStorageSync('user_role');
     wx.removeStorageSync('user_name');
     wx.removeStorageSync('user_phone');
-    wx.removeStorageSync('auth_token');
+    wx.removeStorageSync('student_user_id');
+    wx.removeStorageSync('student_id');
+    wx.removeStorageSync('parent_user_id');
+    wx.removeStorageSync('parent_account');
     wx.removeStorageSync('bound_child_id');
   },
 });

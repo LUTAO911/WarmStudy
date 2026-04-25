@@ -428,6 +428,10 @@ Page({
     const userId = getParentId();
     const childId = getChildId();
     const sessionId = this.data.currentSessionId;
+    if (!childId) {
+      this.addAIMessage("请先在家长首页绑定孩子ID，绑定后我才能结合孩子的测评、打卡和报告给出建议。", 2);
+      return;
+    }
     this.setData({ streamingContent: "", loading: true, stopRequested: false });
 
     try {

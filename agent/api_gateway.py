@@ -9,6 +9,7 @@ Responsibilities:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import random
@@ -96,6 +97,7 @@ GATEWAY_CONFIG = _load_gateway_config()
 RAG_AGENT_URL = str(GATEWAY_CONFIG["rag_service"]["base_url"]).rstrip("/")
 RAG_TIMEOUT = int(GATEWAY_CONFIG["rag_service"]["timeout"])
 RAG_HEALTH_TIMEOUT = int(GATEWAY_CONFIG["rag_service"]["health_timeout"])
+DEMO_STUDENT_ID = "100000001"
 
 
 mock_database: dict[str, Any] = {
@@ -142,7 +144,7 @@ def generate_code() -> str:
 
 
 def get_current_user() -> str:
-    return request.headers.get("X-User-ID", "student_001")
+    return request.headers.get("X-User-ID", DEMO_STUDENT_ID)
 
 
 def format_error(message: str, code: int = 400):
@@ -421,7 +423,24 @@ def _child_grade(child_id: str) -> str:
     return mock_database["students"].get(child_id, {}).get("grade", "初一")
 
 
+def _is_student_id(value: Any) -> bool:
+    text = str(value or "").strip()
+    return len(text) == 9 and text.isdigit()
+
+
+def _student_id_from_phone(phone: str | None) -> str:
+    seed = (phone or uuid4().hex).strip()
+    for salt in range(20):
+        digest = hashlib.sha256(f"warmstudy:{seed}:{salt}".encode("utf-8")).hexdigest()
+        candidate = str(100000000 + int(digest[:12], 16) % 900000000)
+        existing = mock_database["students"].get(candidate)
+        if not existing or not phone or existing.get("phone") in ("", phone):
+            return candidate
+    return str(random.randint(100000000, 999999999))
+
+
 def _ensure_student_profile(user_id: str, *, phone: str | None = None, role: str = "student") -> dict[str, Any]:
+    user_id = str(user_id or "").strip() or _student_id_from_phone(phone)
     existing = mock_database["students"].get(user_id)
     if existing:
         if phone and not existing.get("phone"):
@@ -431,6 +450,7 @@ def _ensure_student_profile(user_id: str, *, phone: str | None = None, role: str
 
     profile = {
         "user_id": user_id,
+        "student_id": user_id,
         "name": f"{'学生' if role == 'student' else '用户'}{user_id[-4:]}",
         "phone": phone or "",
         "role": role,
@@ -486,11 +506,11 @@ def _student_status_snapshot(user_id: str) -> dict[str, Any]:
 def _parent_chat_context(parent_id: str, child_id: str | None) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any] | None, dict[str, Any]]:
     parent = _ensure_parent(parent_id)
     resolved_child_id = child_id or (parent.get("children") or [None])[0]
-    child_profile = _ensure_student_profile(resolved_child_id) if resolved_child_id else None
-    child_status = _student_status_snapshot(resolved_child_id) if resolved_child_id else None
+    child_profile = mock_database["students"].get(resolved_child_id) if resolved_child_id else None
+    child_status = _student_status_snapshot(resolved_child_id) if child_profile else None
     latest_report = (
         mock_database["psych_reports"].get(resolved_child_id, [])[-1]
-        if resolved_child_id and mock_database["psych_reports"].get(resolved_child_id)
+        if child_profile and mock_database["psych_reports"].get(resolved_child_id)
         else None
     )
     unread_alerts = sum(
@@ -521,6 +541,8 @@ def _ensure_parent(parent_id: str, *, phone: str | None = None) -> dict[str, Any
     parent_id = _normalize_parent_id(parent_id)
     existing = mock_database["parents"].get(parent_id)
     if existing:
+        if phone and not existing.get("phone"):
+            existing["phone"] = phone
         return existing
 
     qr_token = f"qr_{parent_id}"
@@ -530,16 +552,29 @@ def _ensure_parent(parent_id: str, *, phone: str | None = None) -> dict[str, Any
         "phone": phone or "",
         "name": f"家长{parent_id[-4:]}",
         "qr_token": qr_token,
-        "children": ["student_001"],
+        "children": [],
     }
     mock_database["parents"][parent_id] = profile
     mock_database["bindings"]["parent_to_children"][parent_id] = list(profile["children"])
-    for child_id in profile["children"]:
-        mock_database["bindings"]["child_to_parents"].setdefault(child_id, [])
-        if parent_id not in mock_database["bindings"]["child_to_parents"][child_id]:
-            mock_database["bindings"]["child_to_parents"][child_id].append(parent_id)
-        _ensure_student_profile(child_id)
     return profile
+
+
+def _bind_parent_child(parent_id: str, child_id: str) -> dict[str, Any]:
+    parent_id = _normalize_parent_id(parent_id)
+    child_id = str(child_id or "").strip()
+    _ensure_parent(parent_id)
+    student = mock_database["students"].get(child_id)
+    if not student:
+        raise KeyError(child_id)
+
+    children = mock_database["bindings"]["parent_to_children"].setdefault(parent_id, [])
+    if child_id not in children:
+        children.append(child_id)
+    parents = mock_database["bindings"]["child_to_parents"].setdefault(child_id, [])
+    if parent_id not in parents:
+        parents.append(parent_id)
+    mock_database["parents"][parent_id]["children"] = children
+    return student
 
 
 def _normalize_radar_scores(scores: list[Any] | None) -> list[int]:
@@ -705,9 +740,10 @@ def _build_status_payload(user_id: str) -> dict[str, Any]:
 
 
 def _ensure_demo_seed() -> None:
-    _ensure_student_profile("student_001", phone="13800138000")
+    _ensure_student_profile(DEMO_STUDENT_ID, phone="13800138000")
     parent = _ensure_parent("parent_0001", phone="13900139000")
-    child_id = parent["children"][0]
+    _bind_parent_child(parent["parent_id"], DEMO_STUDENT_ID)
+    child_id = DEMO_STUDENT_ID
 
     if child_id not in mock_database["checkins"]:
         mock_database["checkins"][child_id] = [
@@ -790,8 +826,8 @@ def login_by_phone():
     if not phone or not code:
         return format_error("Phone and code are required")
 
-    user_id = f"{role}_{phone[-4:]}"
     if role == "parent":
+        user_id = f"parent_{phone[-4:]}"
         parent = _ensure_parent(user_id, phone=phone)
         payload = {
             "user_id": parent["parent_id"],
@@ -799,11 +835,14 @@ def login_by_phone():
             "phone": phone,
             "role": role,
             "token": f"token_{parent['parent_id']}_{int(now_ts())}",
+            "bound_children": _get_parent_children(parent["parent_id"]),
         }
     else:
+        user_id = _student_id_from_phone(phone)
         student = _ensure_student_profile(user_id, phone=phone, role=role)
         payload = {
             "user_id": student["user_id"],
+            "student_id": student["student_id"],
             "name": student["name"],
             "phone": phone,
             "role": role,
@@ -1139,6 +1178,7 @@ def parent_login():
             "success": True,
             "account": {
                 "id": parent["id"],
+                "parent_id": parent["parent_id"],
                 "phone": parent["phone"],
                 "name": parent["name"],
                 "qr_token": parent["qr_token"],
@@ -1169,18 +1209,21 @@ def bind_child():
     child_id = (data.get("child_id") or "").strip()
     if not parent_id or not child_id:
         return format_error("parent_id and child_id are required")
+    if not _is_student_id(child_id):
+        return format_error("孩子ID应为9位数字")
+    if child_id not in mock_database["students"]:
+        return format_error("未找到该孩子ID，请确认学生端已登录并生成ID", 404)
 
-    _ensure_parent(parent_id)
-    _ensure_student_profile(child_id)
-    children = mock_database["bindings"]["parent_to_children"].setdefault(parent_id, [])
-    if child_id not in children:
-        children.append(child_id)
-    parents = mock_database["bindings"]["child_to_parents"].setdefault(child_id, [])
-    if parent_id not in parents:
-        parents.append(parent_id)
-    mock_database["parents"][parent_id]["children"] = children
+    student = _bind_parent_child(parent_id, child_id)
     _record_activity("binding", "家长绑定孩子", actor=parent_id, target=child_id, details="parent initiated")
-    return jsonify({"success": True, "message": "Child bound successfully"})
+    return jsonify(
+        {
+            "success": True,
+            "message": "Child bound successfully",
+            "child": {"user_id": child_id, "name": student["name"], "grade": student.get("grade", "初一")},
+            "bound_children": _get_parent_children(parent_id),
+        }
+    )
 
 
 @app.route("/api/child/bind", methods=["POST"])
@@ -1190,6 +1233,10 @@ def bind_parent_by_token():
     child_id = (data.get("child_id") or "").strip()
     if not token or not child_id:
         return format_error("token and child_id are required")
+    if not _is_student_id(child_id):
+        return format_error("孩子ID应为9位数字")
+    if child_id not in mock_database["students"]:
+        return format_error("未找到该孩子ID，请确认学生端已登录并生成ID", 404)
 
     matched_parent_id = None
     for parent_id, parent in mock_database["parents"].items():
@@ -1199,14 +1246,7 @@ def bind_parent_by_token():
     if not matched_parent_id:
         return format_error("Invalid token", 404)
 
-    _ensure_student_profile(child_id)
-    children = mock_database["bindings"]["parent_to_children"].setdefault(matched_parent_id, [])
-    if child_id not in children:
-        children.append(child_id)
-    mock_database["parents"][matched_parent_id]["children"] = children
-    mock_database["bindings"]["child_to_parents"].setdefault(child_id, [])
-    if matched_parent_id not in mock_database["bindings"]["child_to_parents"][child_id]:
-        mock_database["bindings"]["child_to_parents"][child_id].append(matched_parent_id)
+    _bind_parent_child(matched_parent_id, child_id)
     _record_activity("binding", "扫码绑定成功", actor=child_id, target=matched_parent_id, details="child initiated")
 
     return jsonify(
@@ -1223,14 +1263,16 @@ def get_children_profiles():
     child_ids = [item.strip() for item in str(data.get("child_ids", "")).split(",") if item.strip()]
     profiles = []
     for child_id in child_ids:
-        student = _ensure_student_profile(child_id)
-        profiles.append({"user_id": child_id, "name": student["name"], "grade": student.get("grade", "初一")})
+        student = mock_database["students"].get(child_id)
+        if student:
+            profiles.append({"user_id": child_id, "name": student["name"], "grade": student.get("grade", "初一")})
     return jsonify({"success": True, "profiles": profiles})
 
 
 @app.route("/api/parent/child/<child_id>/status", methods=["GET"])
 def get_child_status(child_id: str):
-    _ensure_student_profile(child_id)
+    if child_id not in mock_database["students"]:
+        return format_error("Child not found", 404)
     payload = mock_database["psych_status"].get(child_id) or _build_status_payload(child_id)
     mock_database["psych_status"][child_id] = payload
     return jsonify(payload)
@@ -1238,6 +1280,8 @@ def get_child_status(child_id: str):
 
 @app.route("/api/parent/child/<child_id>/checkins", methods=["GET"])
 def get_child_checkins(child_id: str):
+    if child_id not in mock_database["students"]:
+        return format_error("Child not found", 404)
     days = int(request.args.get("days", 7))
     checkins = mock_database["checkins"].get(child_id, [])
     cutoff = datetime.now() - timedelta(days=days)
@@ -1247,6 +1291,8 @@ def get_child_checkins(child_id: str):
 
 @app.route("/api/parent/child/<child_id>/ai_advice", methods=["GET"])
 def get_daily_advice(child_id: str):
+    if child_id not in mock_database["students"]:
+        return format_error("Child not found", 404)
     payload = mock_database["psych_status"].get(child_id) or _build_status_payload(child_id)
     risk_level = payload.get("riskLevel", 0)
     if risk_level >= 3:
@@ -1261,10 +1307,60 @@ def get_daily_advice(child_id: str):
     return jsonify({"success": True, "advice": advice, "focus": focus})
 
 
+@app.route("/api/parent/child/<child_id>/summary_report", methods=["GET"])
+def get_child_summary_report(child_id: str):
+    student = mock_database["students"].get(child_id)
+    if not student:
+        return format_error("Child not found", 404)
+
+    payload = mock_database["psych_status"].get(child_id) or _build_status_payload(child_id)
+    mock_database["psych_status"][child_id] = payload
+    reports = mock_database["psych_reports"].get(child_id, [])
+    latest_report = deepcopy(reports[-1]) if reports else None
+    checkins = mock_database["checkins"].get(child_id, [])[-7:]
+    avg_emotion = round(sum(item.get("emotion", 3) for item in checkins) / len(checkins), 1) if checkins else None
+    risk_level = payload.get("riskLevel", 0)
+
+    if latest_report:
+        summary = latest_report.get("summary", "")
+        advice = latest_report.get("parent_advice") or latest_report.get("advice", "")
+    elif checkins:
+        summary = "已根据近7天打卡生成阶段性观察，建议继续完成测评以形成完整报告。"
+        advice = "优先保持固定沟通时间，关注睡眠、情绪和学习压力的连续变化。"
+    else:
+        summary = "孩子已绑定，暂无测评和打卡记录。"
+        advice = "建议先引导孩子完成一次心理测评或每日打卡，家长端随后会同步综合报告。"
+
+    return jsonify(
+        {
+            "success": True,
+            "report": {
+                "child_id": child_id,
+                "child_name": student["name"],
+                "grade": student.get("grade", "初一"),
+                "risk_level": risk_level,
+                "risk_label": _risk_label(risk_level),
+                "summary": summary,
+                "advice": advice,
+                "avg_emotion": avg_emotion,
+                "checkin_count": len(checkins),
+                "latest_report_id": latest_report.get("id") if latest_report else None,
+                "latest_report_date": latest_report.get("date") if latest_report else None,
+                "radarScores": payload.get("radarScores", [3, 3, 3, 3, 3, 3]),
+                "updated_at": now_str(),
+            },
+        }
+    )
+
+
 @app.route("/api/parent/child/grade", methods=["POST"])
 def submit_grade():
     data = request.get_json(silent=True) or {}
-    child_id = data.get("user_id") or "student_001"
+    child_id = data.get("user_id")
+    if not child_id:
+        return format_error("user_id is required")
+    if child_id not in mock_database["students"]:
+        return format_error("Child not found", 404)
     grade_entry = {
         "subject": data.get("subject", ""),
         "score": data.get("score", 0),
@@ -1276,6 +1372,8 @@ def submit_grade():
 
 @app.route("/api/parent/child/<child_id>/psych_reports", methods=["GET"])
 def get_child_psych_reports(child_id: str):
+    if child_id not in mock_database["students"]:
+        return format_error("Child not found", 404)
     limit = int(request.args.get("limit", 5))
     reports = deepcopy(mock_database["psych_reports"].get(child_id, []))
     reports.sort(key=lambda item: item["id"], reverse=True)
@@ -1296,6 +1394,8 @@ def get_child_psych_reports(child_id: str):
 
 @app.route("/api/parent/child/<child_id>/psych/latest", methods=["GET"])
 def get_child_psych_latest(child_id: str):
+    if child_id not in mock_database["students"]:
+        return format_error("Child not found", 404)
     payload = mock_database["psych_status"].get(child_id) or _build_status_payload(child_id)
     latest_report = mock_database["psych_reports"].get(child_id, [])[-1] if mock_database["psych_reports"].get(child_id) else None
     return jsonify(

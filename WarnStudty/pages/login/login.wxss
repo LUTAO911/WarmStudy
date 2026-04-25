@@ -27,10 +27,16 @@
 }
 
 .logo-icon {
-  font-size: 76rpx;
-  color: #fff;
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 50%;
+  background: #10b981;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 46rpx;
   font-weight: 700;
-  line-height: 1;
 }
 
 .app-name {
@@ -112,17 +118,16 @@
 }
 
 .role-icon {
-  font-size: 44rpx;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  color: #166534;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
   font-weight: 700;
-  line-height: 1;
-}
-
-.role-card.student .role-icon {
-  color: #00c853;
-}
-
-.role-card.parent .role-icon {
-  color: #ff9500;
 }
 
 .role-name {
@@ -218,16 +223,15 @@
 }
 
 .btn-icon {
-  width: 44rpx;
-  height: 44rpx;
-  border-radius: 22rpx;
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 700;
-  color: #fff;
 }
 
 .btn-text {
