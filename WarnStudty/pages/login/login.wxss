@@ -15,28 +15,22 @@
 }
 
 .logo-circle {
-  width: 160rpx;
-  height: 160rpx;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
+  width: 176rpx;
+  height: 176rpx;
+  background: #ffffff;
+  border-radius: 44rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 24rpx;
-  box-shadow: 0 8rpx 32rpx rgba(102, 126, 234, 0.3);
+  box-shadow: 0 12rpx 36rpx rgba(74, 85, 104, 0.16);
+  overflow: hidden;
 }
 
-.logo-icon {
-  width: 92rpx;
-  height: 92rpx;
-  border-radius: 50%;
-  background: #10b981;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 46rpx;
-  font-weight: 700;
+.logo-image {
+  width: 176rpx;
+  height: 176rpx;
+  display: block;
 }
 
 .app-name {
