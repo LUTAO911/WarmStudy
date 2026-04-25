@@ -27,7 +27,10 @@
 }
 
 .logo-icon {
-  font-size: 80rpx;
+  font-size: 76rpx;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .app-name {
@@ -109,7 +112,17 @@
 }
 
 .role-icon {
-  font-size: 48rpx;
+  font-size: 44rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.role-card.student .role-icon {
+  color: #00c853;
+}
+
+.role-card.parent .role-icon {
+  color: #ff9500;
 }
 
 .role-name {
@@ -205,7 +218,16 @@
 }
 
 .btn-icon {
-  font-size: 36rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #fff;
 }
 
 .btn-text {

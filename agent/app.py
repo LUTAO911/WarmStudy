@@ -431,6 +431,30 @@ def call_dashscope_api(prompt: str, model: str) -> str:
         return f"Error calling DashScope API: {str(e)}"
 
 
+def collect_rag_context(query: str, n_results: int = 3) -> tuple[str, list[dict]]:
+    try:
+        results = query_with_hybrid_search(query_text=query, n_results=n_results)
+    except Exception:
+        return "", []
+
+    context_lines: list[str] = []
+    sources: list[dict] = []
+    for item in results or []:
+        content = str(item.get("content", "")).strip()
+        metadata = item.get("metadata") or {}
+        source = metadata.get("source") or metadata.get("file") or metadata.get("filename") or "RAG 知识库"
+        if content:
+            context_lines.append(f"- {content[:500]}")
+            sources.append(
+                {
+                    "title": Path(str(source)).name,
+                    "category": "RAG",
+                }
+            )
+
+    return "\n".join(context_lines), sources
+
+
 @app.route("/api/update", methods=["POST"])
 def api_update_document():
     body = request.get_json()
@@ -594,9 +618,22 @@ def api_student_chat():
 
         # 构建知识上下文
         knowledge_text = ""
+        knowledge_sources = []
         if knowledge_result and knowledge_result.get("results"):
             for r in knowledge_result["results"]:
-                knowledge_text += f"- {r.get('content', '')}\n"
+                title = r.get("title") or r.get("category") or "心理知识"
+                content = r.get("content", "")
+                knowledge_text += f"- {content}\n"
+                knowledge_sources.append(
+                    {
+                        "title": title,
+                        "category": r.get("category", ""),
+                    }
+                )
+        rag_text, rag_sources = collect_rag_context(message, n_results=3)
+        if rag_text:
+            knowledge_text += f"\n后台 RAG 知识库：\n{rag_text}\n"
+            knowledge_sources.extend(rag_sources)
 
         # 构建LLM提示词
         if knowledge_text:
@@ -625,6 +662,18 @@ def api_student_chat():
 
         # 调用 Qwen 生成回复
         llm_response = generate_chat_response(llm_prompt)
+        if llm_response.startswith("Error"):
+            return jsonify({
+                "success": False,
+                "error": llm_response,
+                "response": "我现在暂时连不上大模型服务，但我已经收到你的问题了。请稍后再试，或者先找身边可信任的老师、家长聊一聊。",
+                "ai_name": "暖暖",
+                "emotion": emotion_label,
+                "crisis_level": crisis_level,
+                "knowledge_count": len(knowledge_sources),
+                "knowledge_sources": knowledge_sources,
+                "type": "model_error"
+            }), 502
 
         return jsonify({
             "success": True,
@@ -632,6 +681,8 @@ def api_student_chat():
             "ai_name": "暖暖",
             "emotion": emotion_label,
             "crisis_level": crisis_level,
+            "knowledge_count": len(knowledge_sources),
+            "knowledge_sources": knowledge_sources,
             "type": "normal_support"
         })
 
@@ -740,11 +791,22 @@ def api_parent_chat():
         )
 
         knowledge_text = ""
+        knowledge_sources = []
         if knowledge_result and knowledge_result.get("results"):
             for item in knowledge_result["results"]:
                 title = item.get("title", "")
                 content = item.get("content", "")
                 knowledge_text += f"- {title}: {content}\n" if title else f"- {content}\n"
+                knowledge_sources.append(
+                    {
+                        "title": title or item.get("category", "家长心理知识"),
+                        "category": item.get("category", ""),
+                    }
+                )
+        rag_text, rag_sources = collect_rag_context(message, n_results=3)
+        if rag_text:
+            knowledge_text += f"\n后台 RAG 知识库：\n{rag_text}\n"
+            knowledge_sources.extend(rag_sources)
 
         parent_profile = data.get("profile") if isinstance(data.get("profile"), dict) else {}
         child_profile = data.get("child_profile") if isinstance(data.get("child_profile"), dict) else {}
@@ -788,7 +850,8 @@ def api_parent_chat():
                 "emotion": emotion_result.get("emotion", "neutral"),
                 "crisis_level": crisis_level,
                 "type": "model_error",
-                "knowledge_count": len((knowledge_result or {}).get("results", [])),
+                "knowledge_count": len(knowledge_sources),
+                "knowledge_sources": knowledge_sources,
             }), 502
 
         return jsonify({
@@ -797,7 +860,8 @@ def api_parent_chat():
             "ai_name": "暖暖",
             "emotion": emotion_result.get("emotion", "neutral"),
             "crisis_level": crisis_level,
-            "knowledge_count": len((knowledge_result or {}).get("results", [])),
+            "knowledge_count": len(knowledge_sources),
+            "knowledge_sources": knowledge_sources,
             "type": "normal_support"
         })
 

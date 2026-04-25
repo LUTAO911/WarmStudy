@@ -15,6 +15,8 @@ interface Message {
   showTime?: boolean;
   emotion?: number;
   canWithdraw?: boolean;
+  knowledgeCount?: number;
+  knowledgeSources?: { title?: string; category?: string }[];
 }
 
 interface Session {
@@ -494,7 +496,11 @@ Page({
     this.scrollToBottom();
   },
 
-  addAIMessage(content: string, emotion: number = 2) {
+  addAIMessage(
+    content: string,
+    emotion: number = 2,
+    meta: { knowledgeCount?: number; knowledgeSources?: { title?: string; category?: string }[] } = {},
+  ) {
     const messages = [...(this.data as ChatPageData).messages];
     const lastMsg = messages[messages.length - 1];
     const showTime =
@@ -507,6 +513,8 @@ Page({
       time: getCurrentTime(),
       showTime,
       emotion,
+      knowledgeCount: meta.knowledgeCount || 0,
+      knowledgeSources: meta.knowledgeSources || [],
     };
 
     messages.push(msg);
@@ -522,6 +530,7 @@ Page({
   async renderAIMessageGradually(
     content: string,
     emotion: number = 2,
+    meta: { knowledgeCount?: number; knowledgeSources?: { title?: string; category?: string }[] } = {},
   ): Promise<void> {
     const fullText = content || "";
     const totalLength = fullText.length;
@@ -541,7 +550,7 @@ Page({
       await new Promise((resolve) => setTimeout(resolve, 18));
     }
 
-    this.addAIMessage(fullText, emotion);
+    this.addAIMessage(fullText, emotion, meta);
   },
 
   shouldShowTime(lastTime: string, currentTime: string): boolean {
@@ -581,6 +590,8 @@ Page({
           type?: string;
           strategy?: Record<string, any>;
           session_id?: string;
+          knowledge_count?: number;
+          knowledge_sources?: { title?: string; category?: string }[];
         }) => {
           if ((this.data as ChatPageData).stopRequested) {
             this.setData({ stopRequested: false });
@@ -600,7 +611,10 @@ Page({
               console.warn("危机检测:", res.crisis_level);
             }
 
-            this.renderAIMessageGradually(res.response, emotion);
+            this.renderAIMessageGradually(res.response, emotion, {
+              knowledgeCount: res.knowledge_count || 0,
+              knowledgeSources: res.knowledge_sources || [],
+            });
             if (res.session_id && res.session_id !== sessionId) {
               this.setData({ currentSessionId: res.session_id });
             }

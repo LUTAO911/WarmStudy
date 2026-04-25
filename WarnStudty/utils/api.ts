@@ -36,7 +36,12 @@ function request<T = any>(
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data as T);
         } else {
-          reject(new Error(`请求失败: ${res.statusCode}`));
+          const body = res.data as { error?: string; message?: string } | undefined;
+          const message =
+            body && (body.error || body.message)
+              ? body.error || body.message
+              : `请求失败: ${res.statusCode}`;
+          reject(new Error(message));
         }
       },
       fail: (err) => {
@@ -139,6 +144,8 @@ export function studentChat(
   type?: string;
   strategy?: Record<string, any>;
   session_id?: string;
+  knowledge_count?: number;
+  knowledge_sources?: { title?: string; category?: string }[];
 }> {
   return request<{
     success: boolean;
@@ -149,6 +156,8 @@ export function studentChat(
     type?: string;
     strategy?: Record<string, any>;
     session_id?: string;
+    knowledge_count?: number;
+    knowledge_sources?: { title?: string; category?: string }[];
   }>("/api/student/chat", {
     user_id: userId,
     message,
@@ -326,6 +335,7 @@ export function parentChat(
   strategy?: Record<string, any>;
   session_id?: string;
   knowledge_count?: number;
+  knowledge_sources?: { title?: string; category?: string }[];
 }> {
   return request<{
     success: boolean;
@@ -334,6 +344,7 @@ export function parentChat(
     strategy?: Record<string, any>;
     session_id?: string;
     knowledge_count?: number;
+    knowledge_sources?: { title?: string; category?: string }[];
   }>("/api/parent/chat", {
     user_id: userId,
     message,

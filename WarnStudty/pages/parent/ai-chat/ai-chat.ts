@@ -14,6 +14,8 @@ interface Message {
   emotion?: number;
   isStreaming?: boolean;
   canWithdraw?: boolean;
+  knowledgeCount?: number;
+  knowledgeSources?: { title?: string; category?: string }[];
 }
 
 interface Session {
@@ -349,7 +351,11 @@ Page({
     this.scrollToBottom();
   },
 
-  addAIMessage(content: string, emotion: number = 2) {
+  addAIMessage(
+    content: string,
+    emotion: number = 2,
+    meta: { knowledgeCount?: number; knowledgeSources?: { title?: string; category?: string }[] } = {},
+  ) {
     const now = Date.now();
     const messages = this.data.messages;
     const lastMsg = messages[messages.length - 1];
@@ -363,6 +369,8 @@ Page({
       time: getCurrentTime(),
       showTime,
       emotion,
+      knowledgeCount: meta.knowledgeCount || 0,
+      knowledgeSources: meta.knowledgeSources || [],
     };
 
     const emotionDisplay =
@@ -381,6 +389,7 @@ Page({
   async renderAIMessageGradually(
     content: string,
     emotion: number = 2,
+    meta: { knowledgeCount?: number; knowledgeSources?: { title?: string; category?: string }[] } = {},
   ): Promise<void> {
     const fullText = content || "";
     const totalLength = fullText.length;
@@ -400,7 +409,7 @@ Page({
       await new Promise((resolve) => setTimeout(resolve, 18));
     }
 
-    this.addAIMessage(fullText, emotion);
+    this.addAIMessage(fullText, emotion, meta);
   },
 
   shouldShowTime(lastTime: string, currentTime: string): boolean {
@@ -434,6 +443,10 @@ Page({
       await this.renderAIMessageGradually(
         res.response || "抱歉，AI助手现在比较忙，请稍后再试 🙏",
         emotion,
+        {
+          knowledgeCount: res.knowledge_count || 0,
+          knowledgeSources: res.knowledge_sources || [],
+        },
       );
     } catch (err) {
       if (this.data.stopRequested) {

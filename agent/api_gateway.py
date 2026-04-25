@@ -957,8 +957,11 @@ def _proxy_chat(path: str, fallback_text: str, *, role: str):
 
     try:
         resp = requests.post(_rag_url(path), json=outbound, timeout=30)
-        if resp.status_code == 200:
+        try:
             result = resp.json()
+        except ValueError:
+            result = {}
+        if resp.status_code == 200:
             if result.get("success") is False:
                 _record_model_usage(path, prompt_text=message, success=False)
                 return (
@@ -969,6 +972,8 @@ def _proxy_chat(path: str, fallback_text: str, *, role: str):
                             "response": result.get("response", fallback_text),
                             "ai_name": "暖暖" if role == "student" else "家庭助手",
                             "type": result.get("type", "upstream_error"),
+                            "knowledge_count": result.get("knowledge_count"),
+                            "knowledge_sources": result.get("knowledge_sources", []),
                             "session_id": session_id,
                             "strategy": outbound.get("strategy", {}),
                         }
@@ -992,6 +997,7 @@ def _proxy_chat(path: str, fallback_text: str, *, role: str):
                     "emotion": result.get("emotion", "neutral"),
                     "crisis_level": result.get("crisis_level", "safe"),
                     "knowledge_count": result.get("knowledge_count"),
+                    "knowledge_sources": result.get("knowledge_sources", []),
                     "type": result.get("type", "normal_support"),
                     "strategy": outbound.get("strategy", {}),
                     "session_id": session_id,
@@ -1002,9 +1008,12 @@ def _proxy_chat(path: str, fallback_text: str, *, role: str):
             jsonify(
                 {
                     "success": False,
-                    "error": f"RAG service returned HTTP {resp.status_code}",
+                    "error": result.get("error", f"RAG service returned HTTP {resp.status_code}"),
+                    "response": result.get("response"),
                     "ai_name": "暖暖" if role == "student" else "家庭助手",
-                    "type": "upstream_error",
+                    "type": result.get("type", "upstream_error"),
+                    "knowledge_count": result.get("knowledge_count"),
+                    "knowledge_sources": result.get("knowledge_sources", []),
                     "session_id": session_id,
                     "strategy": outbound.get("strategy", {}),
                 }

@@ -57,6 +57,9 @@
               <text class="emotion-tag" style="background: {{emotionDisplay.color}}20; color: {{emotionDisplay.color}}">
                 {{emotionDisplay.icon}} {{emotionDisplay.label}}
               </text>
+              <text class="knowledge-tag" wx:if="{{item.knowledgeCount > 0}}">
+                已参考知识库 {{item.knowledgeCount}} 条
+              </text>
             </view>
           </view>
           

@@ -29,7 +29,9 @@ function request(url, data, method = 'POST') {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
         } else {
-          reject(new Error(`请求失败: ${res.statusCode}`));
+          const body = res.data || {};
+          const message = body.error || body.message || `请求失败: ${res.statusCode}`;
+          reject(new Error(message));
         }
       },
       fail: (err) => {
