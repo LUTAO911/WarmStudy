@@ -1,9 +1,12 @@
+export {};
+
 const api = require("../../../utils/api.js");
 const {
   parentLogin,
   getParentQRToken,
   bindChild,
   getChildrenProfiles,
+  getChildComprehensiveReport,
   getChildPsychReports,
   getChildPsychStatus,
   getChildStatus,
@@ -11,6 +14,7 @@ const {
   getDailyAdvice,
   getChildId,
   getParentAlerts,
+  isValidStudentId,
 } = api;
 
 // 定义 ParentAlert 类型
@@ -59,16 +63,19 @@ Page({
     showQR: false,
     qrData: null as { qrImageUrl: string; token: string } | null,
     boundChildren: [] as any[],
+    bindChildId: "",
+    bindingChild: false,
+    hasBoundChild: false,
 
     childInfo: {
-      name: "李明",
-      grade: "七年级",
-      class: "（3）班",
-      studentId: "2024001",
+      name: "未绑定孩子",
+      grade: "",
+      class: "",
+      studentId: "--",
     },
 
-    checkin: { emotion: 4, sleep: 3, study: 3, social: 4 },
-    checkinDone: true,
+    checkin: { emotion: 0, sleep: 0, study: 0, social: 0 },
+    checkinDone: false,
 
     radarScores: [3, 2, 1, 4, 2, 3] as number[],
     dot0Style: "",
@@ -78,7 +85,7 @@ Page({
     dot4Style: "",
     dot5Style: "",
     radarCanvasSize: 220,
-    riskLevel: 1,
+    riskLevel: 0,
 
     weekCheckins: [
       { day: "一", done: true, emotion: 4 },
@@ -90,7 +97,9 @@ Page({
       { day: "日", done: false, emotion: 0 },
     ],
 
-    aiAdvice: "孩子本周学习状态有所波动，建议多关注情绪疏导而非施加压力。",
+    aiAdvice: "绑定孩子后，系统会根据测评、打卡和对话状态生成家长建议。",
+
+    comprehensiveReport: null as any,
 
     recentGrades: [
       { subject: "数学", examDate: "2026-04-02", score: 78 },
@@ -118,10 +127,10 @@ Page({
     unreadAlertCount: 0,
     latestUnreadAlert: null as ParentAlert | null,
     alertTypeMap: {
-      emotion_drop: { icon: "😊", color: "#ff9800", label: "情绪" },
-      no_checkin: { icon: "📋", color: "#9e9e9e", label: "打卡" },
-      test_concerning: { icon: "📊", color: "#f44336", label: "测评" },
-      chat_silence: { icon: "💬", color: "#2196f3", label: "互动" },
+      emotion_drop: { icon: "情", color: "#ff9800", label: "情绪" },
+      no_checkin: { icon: "卡", color: "#9e9e9e", label: "打卡" },
+      test_concerning: { icon: "测", color: "#f44336", label: "测评" },
+      chat_silence: { icon: "聊", color: "#2196f3", label: "互动" },
     } as Record<string, { icon: string; color: string; label: string }>,
   },
 
@@ -211,18 +220,93 @@ Page({
     this.setData({ loginPhone: e.detail.value });
   },
 
+  resetChildData(showBind = false) {
+    wx.removeStorageSync("bound_child_id");
+    this.setData({
+      hasBoundChild: false,
+      childInfo: {
+        name: "未绑定孩子",
+        grade: "",
+        class: "",
+        studentId: "--",
+      },
+      checkin: { emotion: 0, sleep: 0, study: 0, social: 0 },
+      checkinDone: false,
+      riskLevel: 0,
+      aiAdvice: "绑定孩子后，系统会根据测评、打卡和对话状态生成家长建议。",
+      psychReports: [],
+      comprehensiveReport: null,
+      latestUnreadAlert: null,
+      unreadAlertCount: 0,
+      showQR: showBind,
+    });
+    this.updateRadar([0, 0, 0, 0, 0, 0]);
+  },
+
+  applyBoundChildren(childIds: string[]) {
+    if (!childIds.length) {
+      this.setData({ boundChildren: [] });
+      this.resetChildData(true);
+      return Promise.resolve();
+    }
+
+    return getChildrenProfiles(childIds)
+      .then((profRes: any) => {
+        const profiles = profRes.success ? profRes.profiles || [] : [];
+        const childrenWithInfo = childIds.map((id: string) => {
+          const p = profiles.find((x: any) => x.user_id === id) || {};
+          return {
+            id,
+            name: p.name || `孩子${id.slice(-3)}`,
+            grade: p.grade || "",
+            active: id === wx.getStorageSync("bound_child_id"),
+          };
+        });
+        const selectedId =
+          wx.getStorageSync("bound_child_id") &&
+          childIds.includes(wx.getStorageSync("bound_child_id"))
+            ? wx.getStorageSync("bound_child_id")
+            : childrenWithInfo[0].id;
+        wx.setStorageSync("bound_child_id", selectedId);
+        this.setData({
+          boundChildren: childrenWithInfo.map((item: any) => ({
+            ...item,
+            active: item.id === selectedId,
+          })),
+          hasBoundChild: true,
+          showQR: false,
+        });
+        this.loadAllData();
+      })
+      .catch(() => {
+        const selectedId = childIds[0];
+        wx.setStorageSync("bound_child_id", selectedId);
+        this.setData({
+          boundChildren: childIds.map((id: string) => ({
+            id,
+            name: `孩子${id.slice(-3)}`,
+            grade: "",
+            active: id === selectedId,
+          })),
+          hasBoundChild: true,
+          showQR: false,
+        });
+        this.loadAllData();
+      });
+  },
+
   checkLogin() {
     const saved = wx.getStorageSync("parent_account") || null;
     if (saved && saved.phone) {
+      const parentId = String(saved.parent_id || saved.id || "");
       this.setData({
         isLoggedIn: true,
-        parentId: String(saved.id),
+        parentId,
         parentPhone: saved.phone,
         boundChildren: saved.children || [],
       });
       // 每次进来都从后端拉最新绑定数据
       this.refreshChildren();
-      this.loadAllData();
     }
   },
 
@@ -233,59 +317,19 @@ Page({
       .then((res: any) => {
         if (res.success) {
           const account = res.account;
+          const parentId = String(account.parent_id || account.id);
           const data = {
-            id: account.id,
+            id: parentId,
+            parent_id: parentId,
             phone: account.phone,
             name: account.name || "",
             children: res.bound_children || [],
           };
           wx.setStorageSync("parent_account", data);
-          // 查孩子档案获取姓名
+          wx.setStorageSync("parent_user_id", parentId);
+          this.setData({ parentId, parentPhone: account.phone });
           const childIds = res.bound_children || [];
-          if (childIds.length > 0) {
-            getChildrenProfiles(childIds)
-              .then((profRes: any) => {
-                if (profRes.success) {
-                  const profiles = profRes.profiles || [];
-                  const childrenWithInfo = childIds.map((id: string) => {
-                    const p = profiles.find((x: any) => x.user_id === id) || {};
-                    return { id, name: p.name || "孩子", grade: p.grade || "" };
-                  });
-                  this.setData({ boundChildren: childrenWithInfo });
-                  // 自动选中第一个孩子
-                  const first = childrenWithInfo[0];
-                  if (first) {
-                    wx.setStorageSync("bound_child_id", first.id);
-                    this.loadAllData();
-                  }
-                } else {
-                  const childrenWithInfo = childIds.map((id: string) => ({
-                    id,
-                    name: "孩子",
-                    grade: "",
-                  }));
-                  this.setData({ boundChildren: childrenWithInfo });
-                  if (childrenWithInfo[0]) {
-                    wx.setStorageSync("bound_child_id", childrenWithInfo[0].id);
-                    this.loadAllData();
-                  }
-                }
-              })
-              .catch(() => {
-                const childrenWithInfo = childIds.map((id: string) => ({
-                  id,
-                  name: "孩子",
-                  grade: "",
-                }));
-                this.setData({ boundChildren: childrenWithInfo });
-                if (childrenWithInfo[0]) {
-                  wx.setStorageSync("bound_child_id", childrenWithInfo[0].id);
-                  this.loadAllData();
-                }
-              });
-          } else {
-            this.setData({ boundChildren: [] });
-          }
+          this.applyBoundChildren(childIds);
           wx.showToast({ title: "已刷新", icon: "success" });
         }
       })
@@ -304,23 +348,23 @@ Page({
         wx.hideLoading();
         if (res.success) {
           const account = res.account;
+          const parentId = String(account.parent_id || account.id);
           const data = {
-            id: account.id,
+            id: parentId,
+            parent_id: parentId,
             phone: account.phone,
             name: account.name || "",
             children: res.bound_children || [],
           };
           wx.setStorageSync("parent_account", data);
+          wx.setStorageSync("parent_user_id", parentId);
           this.setData({
             isLoggedIn: true,
-            parentId: String(account.id),
+            parentId,
             parentPhone: account.phone,
             boundChildren: res.bound_children || [],
           });
-          // 登录后自动刷新孩子数据
-          if (res.bound_children && res.bound_children.length > 0) {
-            this.loadAllData();
-          }
+          this.applyBoundChildren(res.bound_children || []);
         }
       })
       .catch(() => {
@@ -338,15 +382,49 @@ Page({
     this.setData({ showQR: true, qrData: null });
     this.loadQRCode();
   },
-
   onCloseQR() {
     this.setData({ showQR: false });
+  },
+  onBindChildIdInput(e: any) {
+    this.setData({ bindChildId: String(e.detail.value || "").replace(/\D/g, "").slice(0, 9) });
+  },
+
+  onBindChildById() {
+    const parentId = this.data.parentId;
+    const childId = this.data.bindChildId.trim();
+    if (!parentId) {
+      wx.showToast({ title: "请先登录家长端", icon: "none" });
+      return;
+    }
+    if (!isValidStudentId(childId)) {
+      wx.showToast({ title: "请输入9位孩子ID", icon: "none" });
+      return;
+    }
+
+    this.setData({ bindingChild: true });
+    bindChild(parentId, childId)
+      .then((res: any) => {
+        if (!res.success) {
+          throw new Error(res.error || "绑定失败");
+        }
+        wx.setStorageSync("bound_child_id", childId);
+        const account = wx.getStorageSync("parent_account") || {};
+        const children = Array.from(new Set([...(account.children || []), childId]));
+        wx.setStorageSync("parent_account", { ...account, children });
+        this.setData({ bindChildId: "", showQR: false, bindingChild: false });
+        wx.showToast({ title: "绑定成功", icon: "success" });
+        this.applyBoundChildren(children as string[]);
+      })
+      .catch((err: Error) => {
+        this.setData({ bindingChild: false });
+        wx.showToast({ title: err.message || "绑定失败", icon: "none" });
+      });
   },
 
   loadQRCode() {
     const parentId = this.data.parentId;
     if (!parentId) return;
-    getParentQRToken(Number(parentId))
+    getParentQRToken(parentId)
       .then((res: any) => {
         if (res.success) {
           // 生成二维码图片URL（使用第三方API）
@@ -363,12 +441,16 @@ Page({
   loadAllData() {
     const childId = getChildId();
     const parentId = this.data.parentId;
-    if (!childId) return;
+    if (!childId) {
+      this.resetChildData(this.data.isLoggedIn);
+      return;
+    }
     const localPsych = wx.getStorageSync(`psych_status_${childId}`) || null;
     Promise.all([
       getChildStatus(childId).catch(() => null),
       getChildCheckins(childId, 7).catch(() => null),
       getDailyAdvice(childId).catch(() => null),
+      this.loadComprehensiveReport(childId),
       this.loadPsychReports(childId),
       parentId ? this.loadAlerts(parentId) : Promise.resolve(),
     ]).then(([statusData, checkinsData, adviceData]) => {
@@ -425,6 +507,21 @@ Page({
     });
   },
 
+  loadComprehensiveReport(childId: string) {
+    return getChildComprehensiveReport(childId)
+      .then((res: any) => {
+        if (res.success && res.report) {
+          this.setData({ comprehensiveReport: res.report });
+          if (Array.isArray(res.report.radarScores)) {
+            this.updateRadar(res.report.radarScores);
+          }
+        }
+      })
+      .catch(() => {
+        this.setData({ comprehensiveReport: null });
+      });
+  },
+
   loadPsychReports(childId: string) {
     this.setData({ psychReportsLoading: true });
     return getChildPsychReports(childId, 5)
@@ -461,6 +558,21 @@ Page({
 
   goToAI() {
     wx.navigateTo({ url: "/pages/parent/ai-chat/ai-chat" });
+  },
+
+  onSelectChild(e: any) {
+    const childId = e.currentTarget.dataset.id;
+    if (!childId) return;
+    wx.setStorageSync("bound_child_id", childId);
+    this.setData({
+      boundChildren: this.data.boundChildren.map((item: any) => ({
+        ...item,
+        active: item.id === childId,
+      })),
+      showQR: false,
+      hasBoundChild: true,
+    });
+    this.loadAllData();
   },
 
   onViewReportDetail(e: any) {

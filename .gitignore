@@ -40,6 +40,7 @@ agent/pytest-cache-files-*/
 agent/tests/.tmp/
 
 *.tgz
+*.apk
 
 # Local runtime data
 data/

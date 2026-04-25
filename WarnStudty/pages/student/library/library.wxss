@@ -27,6 +27,45 @@
   color: #6b7280;
 }
 
+.student-id-card {
+  background: #ecfdf5;
+  border: 1rpx solid #bbf7d0;
+  border-radius: 20rpx;
+  padding: 22rpx 24rpx;
+  margin-bottom: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.student-id-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.student-id-label {
+  font-size: 22rpx;
+  color: #166534;
+}
+
+.student-id-value {
+  font-size: 42rpx;
+  font-weight: 700;
+  color: #064e3b;
+  letter-spacing: 2rpx;
+}
+
+.student-id-copy {
+  flex-shrink: 0;
+  background: #166534;
+  color: #fff;
+  border-radius: 999rpx;
+  padding: 14rpx 22rpx;
+  font-size: 24rpx;
+}
+
 /* 今日心情卡片 */
 .today-mood-card {
   background: #ffffff;

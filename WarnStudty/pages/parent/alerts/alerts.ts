@@ -1,5 +1,7 @@
+export {};
+
 const api = require("../../../utils/api.js");
-const { getParentAlerts, markAlertRead, markAllAlertsRead } = api;
+const { getParentAlerts, getParentId, markAlertRead, markAllAlertsRead } = api;
 
 // 定义 ParentAlert 类型
 interface ParentAlert {
@@ -17,15 +19,15 @@ const alertTypeMap: Record<
   string,
   { icon: string; color: string; label: string; bg: string }
 > = {
-  emotion_drop: { icon: "😊", color: "#ff9800", label: "情绪", bg: "#fff8e1" },
-  no_checkin: { icon: "📋", color: "#9e9e9e", label: "打卡", bg: "#f5f5f5" },
+  emotion_drop: { icon: "情", color: "#ff9800", label: "情绪", bg: "#fff8e1" },
+  no_checkin: { icon: "卡", color: "#9e9e9e", label: "打卡", bg: "#f5f5f5" },
   test_concerning: {
-    icon: "📊",
+    icon: "测",
     color: "#f44336",
     label: "测评",
     bg: "#ffebee",
   },
-  chat_silence: { icon: "💬", color: "#2196f3", label: "互动", bg: "#e3f2fd" },
+  chat_silence: { icon: "聊", color: "#2196f3", label: "互动", bg: "#e3f2fd" },
 };
 
 Page({
@@ -49,10 +51,8 @@ Page({
 
   loadAlerts(reset: boolean) {
     if (this.data.loading) return;
-    const account = wx.getStorageSync("parent_account") || {};
-    const parentId = String(
-      account.id || wx.getStorageSync("parent_user_id") || "parent_001",
-    );
+    const parentId = String(getParentId());
+    if (!parentId) return;
     const offset = reset ? 0 : this.data.offset;
 
     this.setData({ loading: true });
@@ -80,10 +80,8 @@ Page({
   onTapAlert(e: any) {
     const alert = e.currentTarget.dataset.alert as ParentAlert;
     if (!alert.is_read) {
-      const account = wx.getStorageSync("parent_account") || {};
-      const parentId = String(
-        account.id || wx.getStorageSync("parent_user_id") || "parent_001",
-      );
+      const parentId = String(getParentId());
+      if (!parentId) return;
       markAlertRead(alert.id, parentId)
         .then(() => {
           // 更新本地状态
@@ -97,10 +95,8 @@ Page({
   },
 
   onMarkAllRead() {
-    const account = wx.getStorageSync("parent_account") || {};
-    const parentId = String(
-      account.id || wx.getStorageSync("parent_user_id") || "parent_001",
-    );
+    const parentId = String(getParentId());
+    if (!parentId) return;
     markAllAlertsRead(parentId)
       .then((res: any) => {
         if (res.success) {

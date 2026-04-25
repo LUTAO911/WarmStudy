@@ -20,7 +20,8 @@ function request(url, data, method = 'POST') {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
         } else {
-          reject(new Error(`请求失败: ${res.statusCode}`));
+          const body = res.data || {};
+          reject(new Error(body.error || body.message || `请求失败: ${res.statusCode}`));
         }
       },
       fail: (err) => reject(err),
@@ -136,6 +137,10 @@ function getDailyAdvice(childId) {
   return request(`/api/parent/child/${childId}/ai_advice`, undefined, 'GET');
 }
 
+function getChildComprehensiveReport(childId) {
+  return request(`/api/parent/child/${childId}/summary_report`, undefined, 'GET');
+}
+
 /**
  * 录入孩子成绩
  */
@@ -193,7 +198,10 @@ function getCurrentDate() {
 /** 获取本地存储的 userId */
 function getUserId(role = 'student') {
   const key = role === 'student' ? 'student_user_id' : 'parent_user_id';
-  return wx.getStorageSync(key) || (role === 'student' ? 'student_001' : 'parent_001');
+  if (role === 'student') {
+    return ensureStudentId();
+  }
+  return wx.getStorageSync(key) || wx.getStorageSync('user_id') || '';
 }
 
 /** 获取当前登录用户的ID */
@@ -208,12 +216,37 @@ function getCurrentRole() {
 
 /** 获取本地存储的家长 ID */
 function getParentId() {
-  return wx.getStorageSync('parent_user_id') || 'parent_001';
+  const account = wx.getStorageSync('parent_account') || {};
+  return wx.getStorageSync('parent_user_id') || account.parent_id || account.id || wx.getStorageSync('user_id') || '';
 }
 
 /** 获取绑定的孩子 ID */
 function getChildId() {
-  return wx.getStorageSync('bound_child_id') || 'student_001';
+  return wx.getStorageSync('bound_child_id') || '';
+}
+
+function isValidStudentId(childId) {
+  return /^\d{9}$/.test(String(childId || '').trim());
+}
+
+function ensureStudentId() {
+  const existing =
+    wx.getStorageSync('student_user_id') ||
+    (wx.getStorageSync('user_role') === 'student' ? wx.getStorageSync('user_id') : '');
+  if (isValidStudentId(existing)) {
+    wx.setStorageSync('student_user_id', existing);
+    wx.setStorageSync('student_id', existing);
+    return existing;
+  }
+
+  const generated = String(Math.floor(100000000 + Math.random() * 900000000));
+  wx.setStorageSync('student_user_id', generated);
+  wx.setStorageSync('student_id', generated);
+  if (!wx.getStorageSync('user_id')) {
+    wx.setStorageSync('user_id', generated);
+    wx.setStorageSync('user_role', 'student');
+  }
+  return generated;
 }
 
 // ===== 扫码绑定 =====
@@ -274,6 +307,7 @@ module.exports = {
   getChildStatus,
   getChildCheckins,
   getDailyAdvice,
+  getChildComprehensiveReport,
   submitGrade,
   parentLogin,
   getChildrenProfiles,
@@ -286,6 +320,8 @@ module.exports = {
   getCurrentRole,
   getParentId,
   getChildId,
+  isValidStudentId,
+  ensureStudentId,
   bindParentByToken,
   getChildPsychReports,
   getChildPsychStatus,

@@ -1,11 +1,36 @@
+export {};
+
 Page({
-  data: { notif: { checkin: true, weekly: true, alert: true } },
+  data: {
+    notif: { checkin: true, weekly: true, alert: true },
+    accountName: "家长",
+    avatarText: "家",
+    accountPhone: "未登录",
+    childBindingText: "未绑定",
+    childBindingClass: "warn",
+  },
   onLoad() {
     const s: any = wx.getStorageSync("parent_notif");
     if (Object.keys(s || {}).length > 0) this.setData({ notif: s });
+    this.loadAccountState();
+  },
+  onShow() {
+    this.loadAccountState();
+  },
+  loadAccountState() {
+    const account = wx.getStorageSync("parent_account") || {};
+    const children = account.children || [];
+    const accountName = account.name || wx.getStorageSync("user_name") || "家长";
+    this.setData({
+      accountName,
+      avatarText: String(accountName).slice(0, 1) || "家",
+      accountPhone: account.phone || wx.getStorageSync("user_phone") || "未登录",
+      childBindingText: children.length ? `${children.length} 个孩子` : "未绑定",
+      childBindingClass: children.length ? "success" : "warn",
+    });
   },
   onBindChild() {
-    wx.showToast({ title: "孩子账号已绑定", icon: "none" });
+    wx.reLaunch({ url: "/pages/parent/home/home" });
   },
   onBindSchool() {
     wx.showToast({ title: "智学网绑定即将上线", icon: "none" });

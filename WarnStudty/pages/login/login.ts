@@ -1,3 +1,5 @@
+export {};
+
 const {
   loginByPhone,
   sendVerifyCode,
@@ -156,11 +158,34 @@ Page({
 
   // 处理登录成功
   handleLoginSuccess(result: any, role: string) {
+    const payload = result.data || {};
+    const userId = String(payload.user_id || "");
     // 保存登录信息
-    wx.setStorageSync("user_id", result.data.user_id);
+    wx.setStorageSync("user_id", userId);
     wx.setStorageSync("user_role", role);
-    wx.setStorageSync("user_name", result.data.name);
-    wx.setStorageSync("user_phone", result.data.phone);
+    wx.setStorageSync("user_name", payload.name);
+    wx.setStorageSync("user_phone", payload.phone);
+
+    if (role === "student") {
+      const studentId = String(payload.student_id || userId);
+      wx.setStorageSync("student_user_id", studentId);
+      wx.setStorageSync("student_id", studentId);
+    } else {
+      const children = payload.bound_children || [];
+      wx.setStorageSync("parent_user_id", userId);
+      wx.setStorageSync("parent_account", {
+        id: userId,
+        parent_id: userId,
+        phone: payload.phone,
+        name: payload.name || "",
+        children,
+      });
+      if (children.length > 0) {
+        wx.setStorageSync("bound_child_id", children[0]);
+      } else {
+        wx.removeStorageSync("bound_child_id");
+      }
+    }
 
     wx.showToast({ title: "登录成功", icon: "success" });
     this.navigateToHome(role);
@@ -169,13 +194,32 @@ Page({
   // 模拟登录（开发阶段使用）
   mockLogin(role: string) {
     console.log("mockLogin called", role);
-    const mockUserId = role === "student" ? "student_001" : "parent_001";
+    const localStudentId =
+      wx.getStorageSync("student_user_id") ||
+      String(Math.floor(100000000 + Math.random() * 900000000));
+    const phone = this.data.phone || "13800138000";
+    const mockUserId =
+      role === "student" ? localStudentId : `parent_${phone.slice(-4) || "0001"}`;
     const mockName = role === "student" ? "学生用户" : "家长用户";
 
     wx.setStorageSync("user_id", mockUserId);
     wx.setStorageSync("user_role", role);
     wx.setStorageSync("user_name", mockName);
-    wx.setStorageSync("user_phone", this.data.phone || "13800138000");
+    wx.setStorageSync("user_phone", phone);
+    if (role === "student") {
+      wx.setStorageSync("student_user_id", mockUserId);
+      wx.setStorageSync("student_id", mockUserId);
+    } else {
+      wx.setStorageSync("parent_user_id", mockUserId);
+      wx.setStorageSync("parent_account", {
+        id: mockUserId,
+        parent_id: mockUserId,
+        phone,
+        name: mockName,
+        children: [],
+      });
+      wx.removeStorageSync("bound_child_id");
+    }
 
     console.log("登录信息已保存", { mockUserId, role, mockName });
 

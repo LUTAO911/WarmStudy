@@ -6,7 +6,15 @@
       <text class="welcome-text">{{userInfo.name}}的成长中心</text>
       <text class="date-text">{{userInfo.grade}}{{userInfo.class ? ' ' + userInfo.class : ''}}</text>
     </view>
-    
+
+    <view class="student-id-card">
+      <view class="student-id-main">
+        <text class="student-id-label">孩子ID</text>
+        <text class="student-id-value">{{userInfo.studentId}}</text>
+      </view>
+      <view class="student-id-copy" bindtap="onCopyStudentId">复制给家长</view>
+    </view>
+
     <!-- 今日状态卡片 -->
     <view class="today-mood-card">
       <view class="mood-main">

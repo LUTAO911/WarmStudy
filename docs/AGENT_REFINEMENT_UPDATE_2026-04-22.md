@@ -45,7 +45,7 @@
 
 ```json
 {
-  "user_id": "student_001",
+  "user_id": "483920176",
   "name": "小明",
   "gender": "男",
   "age": 13,
