@@ -1,14 +1,40 @@
 // app.ts
+const DEFAULT_API_BASE = 'https://wsapi.supermoxi.top';
+
 App<IAppOption>({
   globalData: {
     userId: '',
     userRole: '',
     childId: '',
-    apiBase: 'https://wsapi.supermoxi.top',
+    apiBase: DEFAULT_API_BASE,
   },
   onLaunch() {
-    // 初始化：检查登录状态
+    // 先解析宿主配置里的 API 地址，再进入页面逻辑。
+    this.hydrateApiBase();
     this.checkLoginStatus();
+  },
+
+  hydrateApiBase() {
+    const storedApiBase = wx.getStorageSync('api_base_override');
+    if (typeof storedApiBase === 'string' && storedApiBase.trim()) {
+      this.globalData.apiBase = storedApiBase.trim();
+    }
+
+    wx.getExtConfig({
+      success: (res) => {
+        const extConfig = res && res.extConfig ? res.extConfig : {};
+        const extApiBase =
+          typeof extConfig.apiBase === 'string'
+            ? extConfig.apiBase
+            : typeof extConfig.api_base === 'string'
+              ? extConfig.api_base
+              : '';
+
+        if (extApiBase && extApiBase.trim()) {
+          this.setApiBase(extApiBase.trim());
+        }
+      },
+    });
   },
 
   // 检查登录状态
@@ -33,6 +59,11 @@ App<IAppOption>({
     this.globalData.userRole = role;
     wx.setStorageSync('user_id', userId);
     wx.setStorageSync('user_role', role);
+  },
+
+  setApiBase(apiBase: string) {
+    this.globalData.apiBase = apiBase;
+    wx.setStorageSync('api_base_override', apiBase);
   },
 
   // 清除登录状态

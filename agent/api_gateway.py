@@ -21,6 +21,7 @@ from uuid import uuid4
 
 import requests
 from flask import Flask, Response, g, jsonify, render_template, request
+from flask_cors import CORS
 
 from agent.strategy_engine import (
     build_parent_strategy,
@@ -30,6 +31,18 @@ from agent.strategy_engine import (
 )
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
+CORS(
+    app,
+    resources={r"/api/*": {"origins": "*"}},
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-User-ID",
+        "X-Request-ID",
+        "X-API-Key",
+    ],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+)
 
 DEFAULT_DEV_AGENT_KEY = "agent_dev_key_12345"
 ENV_FILE = Path(__file__).parent / ".env"
@@ -944,8 +957,29 @@ def _proxy_chat(path: str, fallback_text: str, *, role: str):
 
     try:
         resp = requests.post(_rag_url(path), json=outbound, timeout=30)
-        if resp.status_code == 200:
+        try:
             result = resp.json()
+        except ValueError:
+            result = {}
+        if resp.status_code == 200:
+            if result.get("success") is False:
+                _record_model_usage(path, prompt_text=message, success=False)
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": result.get("error", "RAG service returned an error"),
+                            "response": result.get("response", fallback_text),
+                            "ai_name": "暖暖" if role == "student" else "家庭助手",
+                            "type": result.get("type", "upstream_error"),
+                            "knowledge_count": result.get("knowledge_count"),
+                            "knowledge_sources": result.get("knowledge_sources", []),
+                            "session_id": session_id,
+                            "strategy": outbound.get("strategy", {}),
+                        }
+                    ),
+                    502,
+                )
             _record_model_usage(path, prompt_text=message, success=True)
             _record_activity("chat", "模型对话请求", actor=user_id, target=path, details=f"role={role};session={session_id}")
             adapted_response = _adapt_gateway_response(
@@ -962,24 +996,46 @@ def _proxy_chat(path: str, fallback_text: str, *, role: str):
                     "ai_name": "暖暖" if role == "student" else "家庭助手",
                     "emotion": result.get("emotion", "neutral"),
                     "crisis_level": result.get("crisis_level", "safe"),
+                    "knowledge_count": result.get("knowledge_count"),
+                    "knowledge_sources": result.get("knowledge_sources", []),
                     "type": result.get("type", "normal_support"),
                     "strategy": outbound.get("strategy", {}),
                     "session_id": session_id,
                 }
             )
-    except Exception:
         _record_model_usage(path, prompt_text=message, success=False)
-
-    return jsonify(
-        {
-            "success": True,
-            "response": fallback_text,
-            "ai_name": "暖暖" if role == "student" else "家庭助手",
-            "type": "fallback",
-            "session_id": session_id,
-            "strategy": outbound.get("strategy", {}),
-        }
-    )
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": result.get("error", f"RAG service returned HTTP {resp.status_code}"),
+                    "response": result.get("response"),
+                    "ai_name": "暖暖" if role == "student" else "家庭助手",
+                    "type": result.get("type", "upstream_error"),
+                    "knowledge_count": result.get("knowledge_count"),
+                    "knowledge_sources": result.get("knowledge_sources", []),
+                    "session_id": session_id,
+                    "strategy": outbound.get("strategy", {}),
+                }
+            ),
+            502,
+        )
+    except Exception as exc:
+        _record_model_usage(path, prompt_text=message, success=False)
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"RAG service request failed: {exc}",
+                    "response": fallback_text,
+                    "ai_name": "暖暖" if role == "student" else "家庭助手",
+                    "type": "upstream_error",
+                    "session_id": session_id,
+                    "strategy": outbound.get("strategy", {}),
+                }
+            ),
+            502,
+        )
 
 
 @app.route("/api/student/chat", methods=["POST"])

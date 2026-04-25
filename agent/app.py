@@ -431,6 +431,30 @@ def call_dashscope_api(prompt: str, model: str) -> str:
         return f"Error calling DashScope API: {str(e)}"
 
 
+def collect_rag_context(query: str, n_results: int = 3) -> tuple[str, list[dict]]:
+    try:
+        results = query_with_hybrid_search(query_text=query, n_results=n_results)
+    except Exception:
+        return "", []
+
+    context_lines: list[str] = []
+    sources: list[dict] = []
+    for item in results or []:
+        content = str(item.get("content", "")).strip()
+        metadata = item.get("metadata") or {}
+        source = metadata.get("source") or metadata.get("file") or metadata.get("filename") or "RAG 知识库"
+        if content:
+            context_lines.append(f"- {content[:500]}")
+            sources.append(
+                {
+                    "title": Path(str(source)).name,
+                    "category": "RAG",
+                }
+            )
+
+    return "\n".join(context_lines), sources
+
+
 @app.route("/api/update", methods=["POST"])
 def api_update_document():
     body = request.get_json()
@@ -594,9 +618,22 @@ def api_student_chat():
 
         # 构建知识上下文
         knowledge_text = ""
+        knowledge_sources = []
         if knowledge_result and knowledge_result.get("results"):
             for r in knowledge_result["results"]:
-                knowledge_text += f"- {r.get('content', '')}\n"
+                title = r.get("title") or r.get("category") or "心理知识"
+                content = r.get("content", "")
+                knowledge_text += f"- {content}\n"
+                knowledge_sources.append(
+                    {
+                        "title": title,
+                        "category": r.get("category", ""),
+                    }
+                )
+        rag_text, rag_sources = collect_rag_context(message, n_results=3)
+        if rag_text:
+            knowledge_text += f"\n后台 RAG 知识库：\n{rag_text}\n"
+            knowledge_sources.extend(rag_sources)
 
         # 构建LLM提示词
         if knowledge_text:
@@ -625,6 +662,18 @@ def api_student_chat():
 
         # 调用 Qwen 生成回复
         llm_response = generate_chat_response(llm_prompt)
+        if llm_response.startswith("Error"):
+            return jsonify({
+                "success": False,
+                "error": llm_response,
+                "response": "我现在暂时连不上大模型服务，但我已经收到你的问题了。请稍后再试，或者先找身边可信任的老师、家长聊一聊。",
+                "ai_name": "暖暖",
+                "emotion": emotion_label,
+                "crisis_level": crisis_level,
+                "knowledge_count": len(knowledge_sources),
+                "knowledge_sources": knowledge_sources,
+                "type": "model_error"
+            }), 502
 
         return jsonify({
             "success": True,
@@ -632,6 +681,8 @@ def api_student_chat():
             "ai_name": "暖暖",
             "emotion": emotion_label,
             "crisis_level": crisis_level,
+            "knowledge_count": len(knowledge_sources),
+            "knowledge_sources": knowledge_sources,
             "type": "normal_support"
         })
 
@@ -732,23 +783,85 @@ def api_parent_chat():
                 "type": "crisis_intervention"
             })
 
-        # 正常对话 - 检索家长相关心理知识
+        # 正常对话 - 检索家长相关心理知识，并交给 Qwen 生成家长端回复
         knowledge_result = pt.search_psychology_knowledge(
             query=message,
             user_type="parent",
             n_results=3
         )
 
-        empathic_response = pt.generate_empathic_response(
-            user_input=message,
-            emotion=emotion_result.get("emotion"),
-            context={"knowledge": knowledge_result}
-        )
+        knowledge_text = ""
+        knowledge_sources = []
+        if knowledge_result and knowledge_result.get("results"):
+            for item in knowledge_result["results"]:
+                title = item.get("title", "")
+                content = item.get("content", "")
+                knowledge_text += f"- {title}: {content}\n" if title else f"- {content}\n"
+                knowledge_sources.append(
+                    {
+                        "title": title or item.get("category", "家长心理知识"),
+                        "category": item.get("category", ""),
+                    }
+                )
+        rag_text, rag_sources = collect_rag_context(message, n_results=3)
+        if rag_text:
+            knowledge_text += f"\n后台 RAG 知识库：\n{rag_text}\n"
+            knowledge_sources.extend(rag_sources)
+
+        parent_profile = data.get("profile") if isinstance(data.get("profile"), dict) else {}
+        child_profile = data.get("child_profile") if isinstance(data.get("child_profile"), dict) else {}
+        child_status = data.get("child_status") if isinstance(data.get("child_status"), dict) else {}
+        strategy = data.get("strategy") if isinstance(data.get("strategy"), dict) else {}
+        system_context = build_parent_system_context(parent_profile, child_profile, strategy)
+
+        status_text = ""
+        if child_status:
+            status_text = f"\n孩子近期状态摘要：{child_status}\n"
+
+        llm_prompt = f"""{system_context}
+
+家长的问题：{message}
+
+检测到的家长情绪：{emotion_result.get("emotion", "neutral")}
+{status_text}
+相关心理知识：
+{knowledge_text or "暂无匹配知识片段。"}
+
+请直接回复家长，要求：
+1. 先理解家长的担心，不责备家长或孩子。
+2. 给出 3 条以内可执行建议，包含可直接使用的沟通话术。
+3. 不做医疗诊断，不夸大风险；如出现明显危机信号，提醒寻求老师或专业人员帮助。
+4. 控制在 150-260 字。
+
+回复："""
+
+        llm_response = generate_chat_response(llm_prompt)
+        if llm_response.startswith("Error"):
+            fallback_response = pt.generate_empathic_response(
+                user_input=message,
+                emotion=emotion_result.get("emotion"),
+                context={"knowledge": knowledge_result}
+            )
+            return jsonify({
+                "success": False,
+                "error": llm_response,
+                "response": fallback_response,
+                "ai_name": "暖暖",
+                "emotion": emotion_result.get("emotion", "neutral"),
+                "crisis_level": crisis_level,
+                "type": "model_error",
+                "knowledge_count": len(knowledge_sources),
+                "knowledge_sources": knowledge_sources,
+            }), 502
 
         return jsonify({
             "success": True,
-            "response": empathic_response,
+            "response": llm_response,
             "ai_name": "暖暖",
+            "emotion": emotion_result.get("emotion", "neutral"),
+            "crisis_level": crisis_level,
+            "knowledge_count": len(knowledge_sources),
+            "knowledge_sources": knowledge_sources,
             "type": "normal_support"
         })
 

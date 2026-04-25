@@ -1,11 +1,11 @@
 {
-	"ios": {
-		"name": "暖学帮"
-	},
-	"android": {
-		"name": "暖学帮"
-	},
-	"common": {
-		"name": "暖学帮"
-	}
+  "ios": {
+    "name": "暖学帮"
+  },
+  "android": {
+    "name": "暖学帮"
+  },
+  "common": {
+    "name": "暖学帮"
+  }
 }

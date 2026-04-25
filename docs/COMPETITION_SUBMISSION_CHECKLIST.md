@@ -22,6 +22,7 @@ This checklist is aligned to the 2026 Guangdong University Computer Design Compe
 - [x] `docs/OPEN_SOURCE_AND_COMPONENTS.md`
 - [x] `docs/MODEL_SOURCE_AND_DEPLOYMENT_NOTE.md`
 - [x] `docs/PROJECT_OVERVIEW_FORM.md`
+- [x] `submission/09_比赛演示验收清单.md`
 
 ## 3. Content Checklist For Project Report
 
@@ -58,6 +59,10 @@ The project report should clearly include:
 - [ ] core demo path is rehearsed
 - [ ] API keys are prepared and valid
 - [ ] local `.env` is configured
+- [ ] production API domain `https://wsapi.supermoxi.top` is reachable
+- [ ] miniapp / super app communication domain whitelist is configured
+- [ ] APK is rebuilt after domain whitelist changes
+- [ ] RAG upload, indexing, retrieval, and chat are verified
 - [ ] backup demo video is available
 - [ ] architecture diagram and workflow diagram are ready in PPT
 - [ ] one person can deploy, one person can present, one person can answer technical questions

@@ -3,6 +3,25 @@ const {
   sendVerifyCode,
 } = require("../../utils/api.js");
 
+const isLocalMockEnvironment = (): boolean => {
+  const app = getApp<IAppOption>();
+  const apiBase =
+    app && app.globalData && typeof app.globalData.apiBase === "string"
+      ? app.globalData.apiBase
+      : "";
+  return /localhost|127\.0\.0\.1|192\.168\./i.test(apiBase);
+};
+
+const getReadableError = (err: any): string => {
+  if (err && typeof err.message === "string" && err.message) {
+    return err.message;
+  }
+  if (err && typeof err.errMsg === "string" && err.errMsg) {
+    return err.errMsg;
+  }
+  return "当前无法连接服务器，请稍后再试";
+};
+
 Page({
   data: {
     selectedRole: "" as "student" | "parent" | "",
@@ -85,8 +104,8 @@ Page({
           this.setData({ countdown: newCountdown });
         }, 1000);
       })
-      .catch(() => {
-        wx.showToast({ title: "验证码发送失败", icon: "none" });
+      .catch((err: any) => {
+        wx.showToast({ title: getReadableError(err), icon: "none", duration: 2500 });
       });
   },
 
@@ -146,9 +165,19 @@ Page({
           wx.showToast({ title: result.message || "登录失败", icon: "none" });
         }
       })
-      .catch((err) => {
-        console.warn("手机号登录接口不可用，回退到本地演示登录", err);
-        this.mockLogin(selectedRole);
+      .catch((err: any) => {
+        if (isLocalMockEnvironment()) {
+          console.warn("本地开发环境登录失败，回退到演示账号", err);
+          this.mockLogin(selectedRole);
+          return;
+        }
+
+        wx.showModal({
+          title: "连接服务器失败",
+          content: getReadableError(err),
+          showCancel: false,
+          confirmText: "知道了",
+        });
       });
   },
 

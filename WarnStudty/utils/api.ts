@@ -3,12 +3,14 @@
  * API地址在 app.ts 的 globalData.apiBase 中配置
  */
 
+const DEFAULT_API_BASE = "https://wsapi.supermoxi.top";
+
 const getApiBase = (): string => {
   const app = getApp<IAppOption>();
   if (app && app.globalData && app.globalData.apiBase) {
     return app.globalData.apiBase;
   }
-  return "https://wsapi.supermoxi.top";
+  return DEFAULT_API_BASE;
 };
 
 // 请求封装
@@ -29,14 +31,26 @@ function request<T = any>(
       data,
       method,
       header,
+      timeout: 15000,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data as T);
         } else {
-          reject(new Error(`请求失败: ${res.statusCode}`));
+          const body = res.data as { error?: string; message?: string } | undefined;
+          const message =
+            body && (body.error || body.message)
+              ? body.error || body.message
+              : `请求失败: ${res.statusCode}`;
+          reject(new Error(message));
         }
       },
-      fail: (err) => reject(err),
+      fail: (err) => {
+        const errMsg =
+          err && typeof err.errMsg === "string" && err.errMsg
+            ? err.errMsg
+            : "网络请求失败";
+        reject(new Error(`${method} ${url} -> ${errMsg}`));
+      },
     });
   });
 }
@@ -130,6 +144,8 @@ export function studentChat(
   type?: string;
   strategy?: Record<string, any>;
   session_id?: string;
+  knowledge_count?: number;
+  knowledge_sources?: { title?: string; category?: string }[];
 }> {
   return request<{
     success: boolean;
@@ -140,6 +156,8 @@ export function studentChat(
     type?: string;
     strategy?: Record<string, any>;
     session_id?: string;
+    knowledge_count?: number;
+    knowledge_sources?: { title?: string; category?: string }[];
   }>("/api/student/chat", {
     user_id: userId,
     message,
@@ -310,8 +328,24 @@ export function parentChat(
   userId: string,
   message: string,
   options?: { sessionId?: string; childId?: string },
-): Promise<{ response: string; strategy?: Record<string, any>; session_id?: string }> {
-  return request<{ success: boolean; response: string }>("/api/parent/chat", {
+): Promise<{
+  success: boolean;
+  response: string;
+  error?: string;
+  strategy?: Record<string, any>;
+  session_id?: string;
+  knowledge_count?: number;
+  knowledge_sources?: { title?: string; category?: string }[];
+}> {
+  return request<{
+    success: boolean;
+    response: string;
+    error?: string;
+    strategy?: Record<string, any>;
+    session_id?: string;
+    knowledge_count?: number;
+    knowledge_sources?: { title?: string; category?: string }[];
+  }>("/api/parent/chat", {
     user_id: userId,
     message,
     session_id: options && options.sessionId ? options.sessionId : undefined,

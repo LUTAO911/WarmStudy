@@ -9,8 +9,10 @@ interface IAppOption {
     apiBase: string;
   };
   onLaunch?: () => void;
+  hydrateApiBase?: () => void;
   checkLoginStatus?: () => void;
   setCurrentUser?: (userId: string, role: string) => void;
+  setApiBase?: (apiBase: string) => void;
   clearLoginStatus?: () => void;
 }
 
@@ -40,6 +42,7 @@ declare namespace wx {
     data?: any;
     method?: string;
     header?: Record<string, string>;
+    timeout?: number;
     success?: (res: RequestResponse) => void;
     fail?: (err: any) => void;
   }
@@ -63,6 +66,7 @@ declare const wx: {
   showModal(options: {
     title?: string;
     content?: string;
+    showCancel?: boolean;
     confirmText?: string;
     cancelText?: string;
     success?: (res: { confirm: boolean; cancel?: boolean }) => void;
