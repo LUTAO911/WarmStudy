@@ -1702,6 +1702,11 @@ def index():
     return render_template("landing.html")
 
 
+@app.route("/download", methods=["GET"])
+def download_page():
+    return render_template("download.html")
+
+
 @app.route("/console", methods=["GET"])
 def console():
     return render_template("gateway_dashboard.html", rag_agent_url=RAG_AGENT_URL)

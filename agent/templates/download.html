@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>暖学帮 App 下载 | WarmStudy</title>
+  <style>
+    :root {
+      --bg: #fff7ef;
+      --card: rgba(255, 255, 255, 0.9);
+      --text: #233044;
+      --muted: #6b7280;
+      --warm: #f59e0b;
+      --blue: #234b7b;
+      --green: #16a34a;
+      --line: rgba(35, 48, 68, 0.1);
+      --shadow: 0 28px 80px rgba(151, 93, 42, 0.16);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 12%, rgba(255, 215, 128, 0.36), transparent 26%),
+        radial-gradient(circle at 82% 18%, rgba(255, 170, 150, 0.24), transparent 28%),
+        linear-gradient(180deg, #fffaf3 0%, #fff1e7 48%, #fbe7df 100%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(18px);
+      background: rgba(255, 247, 239, 0.78);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar-inner {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 16px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+    }
+
+    .brand img {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      object-fit: cover;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.22);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .nav a {
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .nav a.primary {
+      background: var(--text);
+      color: #fff;
+    }
+
+    .hero {
+      padding: 68px 0 52px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+      gap: 34px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #a45110;
+      font-weight: 700;
+      font-size: 13px;
+      border: 1px solid rgba(164, 81, 16, 0.1);
+    }
+
+    h1 {
+      margin: 22px 0 18px;
+      font-size: clamp(40px, 6vw, 74px);
+      line-height: 1.02;
+      letter-spacing: -0.05em;
+    }
+
+    .lead {
+      margin: 0;
+      max-width: 680px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.9;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 30px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 52px;
+      padding: 0 22px;
+      border-radius: 18px;
+      font-weight: 800;
+      box-shadow: 0 16px 42px rgba(35, 48, 68, 0.12);
+    }
+
+    .btn.download {
+      background: linear-gradient(135deg, #f97316, #fbbf24);
+      color: #fff;
+    }
+
+    .btn.secondary {
+      background: #fff;
+      color: var(--blue);
+      border: 1px solid var(--line);
+    }
+
+    .phone-card {
+      position: relative;
+      padding: 18px;
+      border-radius: 40px;
+      background: rgba(255, 255, 255, 0.58);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+    }
+
+    .phone-card img {
+      width: 100%;
+      border-radius: 32px;
+      display: block;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin: 22px 0 58px;
+    }
+
+    .info-card,
+    .video-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(151, 93, 42, 0.08);
+    }
+
+    .info-card strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .info-card span {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .video-section {
+      padding-bottom: 72px;
+    }
+
+    .video-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
+      gap: 24px;
+      align-items: center;
+    }
+
+    .video-placeholder {
+      min-height: 300px;
+      border-radius: 24px;
+      background:
+        linear-gradient(135deg, rgba(35, 75, 123, 0.78), rgba(249, 115, 22, 0.52)),
+        url("/static/website/app-splash.png") center/cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      text-align: center;
+      padding: 28px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .video-placeholder::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(20, 30, 48, 0.34);
+    }
+
+    .play-copy {
+      position: relative;
+      z-index: 1;
+    }
+
+    .play-icon {
+      width: 74px;
+      height: 74px;
+      margin: 0 auto 16px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.92);
+      color: #f97316;
+      display: grid;
+      place-items: center;
+      font-size: 34px;
+      font-weight: 900;
+      padding-left: 4px;
+    }
+
+    .video-copy h2 {
+      margin: 0 0 12px;
+      font-size: clamp(28px, 4vw, 44px);
+    }
+
+    .video-copy p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.85;
+    }
+
+    .note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    footer {
+      padding: 28px 0 42px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    @media (max-width: 860px) {
+      .hero-grid,
+      .video-card {
+        grid-template-columns: 1fr;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">
+        <img src="/static/website/app-icon.png" alt="暖学帮图标">
+        <span>暖学帮 WarmStudy</span>
+      </a>
+      <nav class="nav">
+        <a href="/">官网首页</a>
+        <a href="#video">使用视频</a>
+        <a class="primary" href="https://github.com/LUTAO581314/WarmStudy/releases/latest/download/com.tencent.weauth-0.1.0.apk">下载 App</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="shell hero-grid">
+        <div>
+          <div class="eyebrow">Android APK 下载 · 青少年心理关怀 AI 原型</div>
+          <h1>下载暖学帮 App，体验学习成长陪伴。</h1>
+          <p class="lead">
+            暖学帮面向学生与家长双端场景，提供心理测评、AI 对话、状态观察、家校沟通建议与知识库支持。
+            当前下载包用于比赛演示、评审安装和本地体验。
+          </p>
+          <div class="actions">
+            <a class="btn download" href="https://github.com/LUTAO581314/WarmStudy/releases/latest/download/com.tencent.weauth-0.1.0.apk">立即下载 Android APK</a>
+            <a class="btn secondary" href="https://github.com/LUTAO581314/WarmStudy/releases/latest" target="_blank" rel="noreferrer">查看 Release</a>
+          </div>
+          <div class="note">如果手机提示安装风险，请确认来源为 WarmStudy GitHub Release 后继续安装；安装新版本前建议先卸载旧版本以刷新图标缓存。</div>
+        </div>
+
+        <div class="phone-card">
+          <img src="/static/website/app-splash.png" alt="暖学帮启动界面">
+        </div>
+      </div>
+    </section>
+
+    <section class="shell info-grid">
+      <div class="info-card">
+        <strong>学生端</strong>
+        <span>支持心理测评、情绪表达、AI 陪伴对话与心理知识学习，让学生更低压力地表达状态。</span>
+      </div>
+      <div class="info-card">
+        <strong>家长端</strong>
+        <span>提供孩子状态查看、报告解读、风险提醒与沟通建议，帮助家长用更温和的方式理解孩子。</span>
+      </div>
+      <div class="info-card">
+        <strong>演示版本</strong>
+        <span>APK 会随 Release 更新。后续视频上传后，本页会直接支持在线播放使用教程。</span>
+      </div>
+    </section>
+
+    <section id="video" class="video-section">
+      <div class="shell video-card">
+        <div class="video-placeholder">
+          <div class="play-copy">
+            <div class="play-icon">▶</div>
+            <strong>使用视频即将上传</strong>
+            <p>视频文件准备好后，会在这里直接播放。</p>
+          </div>
+        </div>
+        <div class="video-copy">
+          <h2>预留视频播放区</h2>
+          <p>
+            这里会放置暖学帮 App 的使用演示视频，包括登录、学生端测评、AI 对话、家长端查看报告与后台能力展示。
+            视频上传后只需要把视频文件放到网站静态目录或填写视频地址，本页即可切换为在线播放。
+          </p>
+          <div class="actions">
+            <a class="btn secondary" href="/">返回官网首页</a>
+            <a class="btn secondary" href="/console">进入后台控制台</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    WarmStudy · 暖学帮 · 专注学习成长，温暖伴你左右
+  </footer>
+</body>
+</html>
