@@ -5,7 +5,7 @@
       <image
         class="logo-image"
         src="/miniapp/android/nativeResources/assets/branding/app-icon.png"
-        mode="aspectFill"
+        mode="aspectFit"
       />
     </view>
     <text class="app-name">WarmStudy</text>
